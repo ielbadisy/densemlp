@@ -1,0 +1,7 @@
+.Rproj.user/
+.Rhistory
+.Ruserdata
+ARCHIVED/
+mlp-package/mlp.Rcheck/
+mlp-package/*.tar.gz
+*.Rcheck/

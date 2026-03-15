@@ -1,0 +1,28 @@
+Package: mlp
+Title: Tabular Multilayer Perceptrons for Classification and Regression in R
+Version: 0.5.0
+Authors@R: 
+    person("Imad", "EL BADISY", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
+Author: Imad EL BADISY [aut, cre]
+Maintainer: Imad EL BADISY <elbadisyimad@gmail.com>
+Description: Multilayer perceptrons for tabular classification
+    and regression using 'torch', with automatic preprocessing, prediction,
+    evaluation, and interpretation utilities.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    ggplot2,
+    stats,
+    torch
+Suggests:
+    glmnet,
+    knitr,
+    ranger,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://example.com/mlp
+BugReports: https://example.com/mlp/issues
