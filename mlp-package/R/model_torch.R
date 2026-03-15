@@ -116,8 +116,11 @@ mlp_module <- torch::nn_module(
     if (!is.null(self$input_projection)) {
       x <- self$input_projection(x)
     }
-    for (block in self$blocks) {
-      x <- block(x)
+    n_blocks <- length(self$blocks)
+    if (n_blocks > 0L) {
+      for (i in seq_len(n_blocks)) {
+        x <- self$blocks[[i]](x)
+      }
     }
     self$output(x)
   }
@@ -140,7 +143,7 @@ build_scheduler <- function(schedule, optimizer, epochs) {
     return(NULL)
   }
   if (identical(schedule, "cosine")) {
-    return(torch::lr_cosine_annealing_lr(optimizer, T_max = max(2L, epochs)))
+    return(torch::lr_cosine_annealing(optimizer, T_max = max(2L, epochs)))
   }
-  torch::lr_step_lr(optimizer, step_size = max(5L, floor(epochs / 3)), gamma = 0.5)
+  torch::lr_step(optimizer, step_size = max(5L, floor(epochs / 3)), gamma = 0.5)
 }
