@@ -1,0 +1,70 @@
+test_that("binary classification works end to end", {
+  data <- mtcars
+  data$am <- factor(data$am, labels = c("auto", "manual"))
+  fit <- mlp(am ~ mpg + wt + hp + cyl, data = data, epochs = 10, patience = 3, verbose = FALSE, seed = 1)
+  pred <- predict(fit, data, type = "class")
+  prob <- predict(fit, data, type = "prob")
+  expect_s3_class(fit, "mlp_fit")
+  expect_true(is.factor(pred))
+  expect_equal(ncol(prob), 2)
+  expect_equal(levels(pred), levels(data$am))
+})
+
+test_that("multiclass classification preserves levels", {
+  fit <- mlp(Species ~ ., data = iris, epochs = 10, patience = 3, verbose = FALSE, seed = 2)
+  pred <- predict(fit, iris, type = "class")
+  expect_true(is.factor(pred))
+  expect_equal(levels(pred), levels(iris$Species))
+})
+
+test_that("regression returns numeric predictions", {
+  fit <- mlp(mpg ~ disp + hp + wt, data = mtcars, task = "regression", epochs = 10, patience = 3, verbose = FALSE, seed = 3)
+  pred <- predict(fit, mtcars, type = "response")
+  metrics <- mlp_metrics(mtcars$mpg, pred, task = "regression")
+  expect_true(is.numeric(pred))
+  expect_true(all(is.finite(unlist(metrics))))
+})
+
+test_that("preprocessing handles unseen categories", {
+  train <- data.frame(
+    y = factor(c("a", "b", "a")),
+    x1 = c(1, NA, 3),
+    x2 = factor(c("u", "v", NA))
+  )
+  fit <- mlp(y ~ ., data = train, epochs = 5, patience = 2, verbose = FALSE, seed = 4)
+  new_data <- data.frame(x1 = c(2, NA), x2 = c("new", NA))
+  pred <- predict(fit, new_data, type = "class")
+  expect_length(pred, 2)
+})
+
+test_that("permutation importance returns expected structure", {
+  fit <- mlp(Species ~ ., data = iris, epochs = 5, patience = 2, verbose = FALSE, seed = 5)
+  imp <- perm_importance(fit, iris[, -5], iris$Species)
+  expect_s3_class(imp, "mlp_importance")
+  expect_true(all(c("feature", "importance") %in% names(imp$data)))
+})
+
+test_that("exported workflow used in getting started works", {
+  fit <- mlp(
+    Species ~ .,
+    data = iris,
+    epochs = 5,
+    patience = 2,
+    verbose = FALSE,
+    seed = 6
+  )
+
+  pred_class <- predict(fit, iris[1:5, ], type = "class")
+  pred_prob <- predict(fit, iris[1:5, ], type = "prob")
+  metrics <- mlp_metrics(iris$Species, predict(fit, iris, type = "class"), task = "classification")
+  history_plot <- plot_history(fit)
+  auto_plot <- ggplot2::autoplot(fit)
+  imp <- perm_importance(fit, iris[, -5], iris$Species)
+
+  expect_true(is.factor(pred_class))
+  expect_equal(nrow(pred_prob), 5)
+  expect_true("accuracy" %in% names(metrics))
+  expect_s3_class(history_plot, "ggplot")
+  expect_s3_class(auto_plot, "ggplot")
+  expect_s3_class(imp, "mlp_importance")
+})

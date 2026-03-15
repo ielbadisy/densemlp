@@ -4,4 +4,5 @@
 ARCHIVED/
 mlp-package/mlp.Rcheck/
 mlp-package/*.tar.gz
+mlp-package/vignettes/*.html
 *.Rcheck/

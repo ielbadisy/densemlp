@@ -1,0 +1,51 @@
+---
+title: "Getting Started"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+library(mlp)
+```
+
+This vignette assumes `mlp` is installed or loaded as a package. If you are
+developing locally from the source tree, use `pkgload::load_all(".")` rather
+than sourcing individual files such as `R/mlp.R`, because `mlp()` relies on
+internal helper functions that are loaded through the package namespace.
+
+```{r}
+fit <- mlp(
+  Species ~ .,
+  data = iris,
+  epochs = 10,
+  patience = 3,
+  verbose = FALSE,
+  seed = 1
+)
+
+predict(fit, iris[1:5, ], type = "class")
+predict(fit, iris[1:5, ], type = "prob")
+```
+
+```{r}
+# plot_history() is exported directly by mlp
+plot_history(fit)
+```
+
+```{r}
+# autoplot() is a ggplot2 generic, so qualify it or attach ggplot2
+ggplot2::autoplot(fit)
+```
+
+```{r}
+pred <- predict(fit, iris, type = "class")
+mlp_metrics(iris$Species, pred, task = "classification")
+```
+
+```{r}
+importance <- perm_importance(fit, iris[, -5], iris$Species)
+plot(importance)
+```
