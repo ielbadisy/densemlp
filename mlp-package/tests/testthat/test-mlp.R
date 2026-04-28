@@ -37,6 +37,43 @@ test_that("preprocessing handles unseen categories", {
   expect_length(pred, 2)
 })
 
+test_that("outcomes must be complete", {
+  data <- iris
+  data$Species[1] <- NA
+  expect_error(
+    mlp(Species ~ ., data = data, epochs = 2, verbose = FALSE),
+    "Outcome values must not be missing"
+  )
+})
+
+test_that("unused outcome levels are dropped before fitting", {
+  data <- iris[iris$Species != "virginica", ]
+  data$Species <- factor(data$Species, levels = levels(iris$Species))
+  fit <- mlp(Species ~ ., data = data, epochs = 3, patience = 1, verbose = FALSE, seed = 7)
+  pred <- predict(fit, data[1:3, ], type = "class")
+  prob <- predict(fit, data[1:3, ], type = "prob")
+  expect_equal(levels(pred), c("setosa", "versicolor"))
+  expect_equal(colnames(prob), c("setosa", "versicolor"))
+})
+
+test_that("invalid training controls fail before fitting", {
+  expect_error(
+    mlp(Species ~ ., data = iris, epochs = 0, verbose = FALSE),
+    "`epochs` must be a positive integer",
+    fixed = TRUE
+  )
+  expect_error(
+    mlp(Species ~ ., data = iris, validation = 1, verbose = FALSE),
+    "`validation` must be in (0, 1).",
+    fixed = TRUE
+  )
+  expect_error(
+    mlp(Species ~ ., data = iris, label_smoothing = 1, verbose = FALSE),
+    "`label_smoothing` must be in [0, 1).",
+    fixed = TRUE
+  )
+})
+
 test_that("permutation importance returns expected structure", {
   fit <- mlp(Species ~ ., data = iris, epochs = 5, patience = 2, verbose = FALSE, seed = 5)
   imp <- perm_importance(fit, iris[, -5], iris$Species)

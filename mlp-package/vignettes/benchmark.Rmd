@@ -8,6 +8,6 @@ vignette: >
 ---
 
 ```{r eval=FALSE}
-source(system.file("benchmarks", "benchmark_models.R", package = "mlp"))
+source(system.file("benchmarks", "benchmark_models.R", package = "tabularmlp"))
 benchmark_mlp_models()
 ```

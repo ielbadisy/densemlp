@@ -62,7 +62,7 @@ clone_state_dict <- function(model) {
 #' @keywords internal
 fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
                         dropout, batch_norm, residual, gated, input_projection,
-                        epochs, batch_size, lr, optimizer, lr_schedule,
+                        output_dim, epochs, batch_size, lr, optimizer, lr_schedule,
                         weight_decay, validation, early_stopping, patience,
                         min_delta, min_epochs, seed, verbose, device,
                         loss_name, label_smoothing = 0, focal_gamma = 2) {
@@ -97,7 +97,7 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
   model <- mlp_module(
     input_dim = ncol(x),
     hidden_units = hidden_units,
-    output_dim = if (identical(task, "regression")) 1L else if (identical(outcome_type, "binary")) 1L else length(unique(y)),
+    output_dim = output_dim,
     activation = activation,
     dropout = dropout,
     batch_norm = batch_norm,

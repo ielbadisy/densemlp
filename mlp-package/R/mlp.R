@@ -71,6 +71,17 @@ mlp <- function(formula = NULL,
   task <- match.arg(task)
   hidden_units <- normalize_hidden_units(hidden_units)
   dropout <- normalize_dropout(dropout, hidden_units)
+  input_projection <- normalize_input_projection(input_projection)
+  epochs <- normalize_positive_integer(epochs, "epochs")
+  batch_size <- normalize_positive_integer(batch_size, "batch_size")
+  lr <- check_scalar_number(lr, "lr", lower = 0, lower_closed = FALSE)
+  weight_decay <- check_scalar_number(weight_decay, "weight_decay", lower = 0)
+  validation <- check_scalar_number(validation, "validation", lower = 0, upper = 1, lower_closed = FALSE, upper_closed = FALSE)
+  patience <- normalize_nonnegative_integer(patience, "patience")
+  min_delta <- check_scalar_number(min_delta, "min_delta", lower = 0)
+  min_epochs <- normalize_positive_integer(min_epochs, "min_epochs")
+  label_smoothing <- check_scalar_number(label_smoothing, "label_smoothing", lower = 0, upper = 1, upper_closed = FALSE)
+  focal_gamma <- check_scalar_number(focal_gamma, "focal_gamma", lower = 0)
 
   using_formula <- !is.null(formula) || !is.null(data)
   using_xy <- !is.null(x) || !is.null(y)
@@ -121,6 +132,7 @@ mlp <- function(formula = NULL,
     residual = residual,
     gated = gated,
     input_projection = input_projection,
+    output_dim = outcome$output_dim,
     epochs = epochs,
     batch_size = batch_size,
     lr = lr,

@@ -107,6 +107,10 @@ apply_blueprint <- function(blueprint, new_data) {
 
 #' @keywords internal
 prepare_outcome <- function(y, task) {
+  if (anyNA(y)) {
+    abort("Outcome values must not be missing.")
+  }
+
   if (identical(task, "regression")) {
     if (!is.numeric(y)) {
       abort("Regression requires a numeric outcome.")
@@ -137,6 +141,7 @@ prepare_outcome <- function(y, task) {
   } else if (!is.factor(y)) {
     abort("Classification requires a factor, logical, character, or 0/1 outcome.")
   }
+  y <- droplevels(y)
 
   if (length(levels(y)) < 2L) {
     abort("Classification outcomes must contain at least two classes.")

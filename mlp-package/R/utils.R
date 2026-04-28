@@ -16,15 +16,18 @@ set_reproducible_seed <- function(seed) {
 
 #' @keywords internal
 normalize_hidden_units <- function(hidden_units) {
-  if (!is.numeric(hidden_units) || length(hidden_units) < 1L) {
-    abort("`hidden_units` must be a numeric vector with at least one element.")
+  if (!is.numeric(hidden_units) || length(hidden_units) < 1L ||
+      any(!is.finite(hidden_units)) || any(hidden_units < 1) ||
+      any(hidden_units != as.integer(hidden_units))) {
+    abort("`hidden_units` must be positive integer layer sizes.")
   }
   as.integer(hidden_units)
 }
 
 #' @keywords internal
 normalize_dropout <- function(dropout, hidden_units) {
-  if (!is.numeric(dropout) || any(dropout < 0) || any(dropout >= 1)) {
+  if (!is.numeric(dropout) || length(dropout) < 1L ||
+      any(!is.finite(dropout)) || any(dropout < 0) || any(dropout >= 1)) {
     abort("`dropout` must be numeric values in [0, 1).")
   }
   if (length(dropout) == 1L) {
@@ -34,6 +37,48 @@ normalize_dropout <- function(dropout, hidden_units) {
     abort("`dropout` must be length 1 or match `hidden_units`.")
   }
   as.numeric(dropout)
+}
+
+#' @keywords internal
+normalize_positive_integer <- function(x, arg) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) ||
+      x < 1 || x != as.integer(x)) {
+    abort(sprintf("`%s` must be a positive integer.", arg))
+  }
+  as.integer(x)
+}
+
+#' @keywords internal
+normalize_nonnegative_integer <- function(x, arg) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) ||
+      x < 0 || x != as.integer(x)) {
+    abort(sprintf("`%s` must be a non-negative integer.", arg))
+  }
+  as.integer(x)
+}
+
+#' @keywords internal
+check_scalar_number <- function(x, arg, lower = -Inf, upper = Inf,
+                                lower_closed = TRUE, upper_closed = TRUE) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x)) {
+    abort(sprintf("`%s` must be a finite numeric scalar.", arg))
+  }
+  lower_ok <- if (isTRUE(lower_closed)) x >= lower else x > lower
+  upper_ok <- if (isTRUE(upper_closed)) x <= upper else x < upper
+  if (!lower_ok || !upper_ok) {
+    left <- if (isTRUE(lower_closed)) "[" else "("
+    right <- if (isTRUE(upper_closed)) "]" else ")"
+    abort(sprintf("`%s` must be in %s%s, %s%s.", arg, left, lower, upper, right))
+  }
+  x
+}
+
+#' @keywords internal
+normalize_input_projection <- function(input_projection) {
+  if (is.null(input_projection)) {
+    return(NULL)
+  }
+  normalize_positive_integer(input_projection, "input_projection")
 }
 
 #' @keywords internal
