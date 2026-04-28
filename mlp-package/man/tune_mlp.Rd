@@ -2,7 +2,7 @@
 % Please edit documentation in R/tuning.R
 \name{tune_mlp}
 \alias{tune_mlp}
-\title{Tune an MLP over a small hyperparameter grid}
+\title{Tune an MLP over a task-aware hyperparameter grid}
 \usage{
 tune_mlp(
   formula = NULL,
@@ -10,16 +10,15 @@ tune_mlp(
   x = NULL,
   y = NULL,
   task = c("auto", "classification", "regression"),
-  grid = list(hidden_units = list(c(64, 32), c(128, 64), c(64, 64)), activation =
-    c("relu", "tanh"), dropout = c(0, 0.1), batch_norm = c(FALSE), epochs = c(50),
-    batch_size = c(16, 32), lr = c(0.001, 0.005), optimizer = c("adam"), weight_decay =
-    c(0, 1e-04)),
+  grid = NULL,
   metric = NULL,
   validation = 0.2,
   early_stopping = TRUE,
   patience = 10,
   min_delta = 0,
+  min_epochs = NULL,
   seed = 1,
+  repeats = 3,
   verbose = FALSE,
   device = c("auto", "cpu", "cuda"),
   refit = TRUE
@@ -49,7 +48,11 @@ and \code{"rmse"} or \code{"valid_loss"} for regression.}
 
 \item{min_delta}{Minimum validation loss improvement.}
 
+\item{min_epochs}{Minimum number of epochs before early stopping can trigger.}
+
 \item{seed}{Base random seed.}
+
+\item{repeats}{Number of repeated seeds per candidate.}
 
 \item{verbose}{Print per-candidate progress.}
 
@@ -62,5 +65,5 @@ A list with ranked tuning results and, when \code{refit = TRUE}, the best
 fitted model.
 }
 \description{
-Tune an MLP over a small hyperparameter grid
+Tune an MLP over a task-aware hyperparameter grid
 }

@@ -8,13 +8,13 @@ vignette: >
 ---
 
 ```{r}
-library(mlp)
+library(tabularmlp)
 ```
 
-This vignette assumes `mlp` is installed or loaded as a package. If you are
-developing locally from the source tree, use `pkgload::load_all(".")` rather
-than sourcing individual files such as `R/mlp.R`, because `mlp()` relies on
-internal helper functions that are loaded through the package namespace.
+This vignette assumes `tabularmlp` is installed or loaded as a package. If you
+are developing locally from the source tree, use `pkgload::load_all(".")`
+rather than sourcing individual files such as `R/mlp.R`, because `mlp()` relies
+on internal helper functions that are loaded through the package namespace.
 
 ```{r}
 fit <- mlp(
@@ -31,7 +31,7 @@ predict(fit, iris[1:5, ], type = "prob")
 ```
 
 ```{r}
-# plot_history() is exported directly by mlp
+# plot_history() is exported directly by tabularmlp
 plot_history(fit)
 ```
 

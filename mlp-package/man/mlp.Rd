@@ -13,17 +13,24 @@ mlp(
   hidden_units = c(64, 32),
   activation = c("relu", "tanh", "gelu"),
   dropout = 0,
-  batch_norm = FALSE,
+  batch_norm = TRUE,
+  residual = FALSE,
+  gated = FALSE,
+  input_projection = NULL,
   epochs = 100,
   batch_size = 32,
   lr = 0.001,
   optimizer = c("adam", "sgd"),
+  lr_schedule = c("none", "cosine", "step"),
   weight_decay = 0,
   validation = 0.2,
   early_stopping = TRUE,
   patience = 10,
   min_delta = 0,
+  min_epochs = max(10L, floor(epochs * 0.2)),
   loss = NULL,
+  label_smoothing = 0,
+  focal_gamma = 2,
   metrics = NULL,
   seed = 1,
   verbose = TRUE,
@@ -49,6 +56,13 @@ mlp(
 
 \item{batch_norm}{Use batch normalization in hidden layers.}
 
+\item{residual}{Use residual skip connections between hidden blocks.}
+
+\item{gated}{Use learned gating inside hidden blocks.}
+
+\item{input_projection}{Optional input projection dimension before hidden
+blocks.}
+
 \item{epochs}{Number of epochs.}
 
 \item{batch_size}{Mini-batch size.}
@@ -56,6 +70,8 @@ mlp(
 \item{lr}{Learning rate.}
 
 \item{optimizer}{Optimizer name.}
+
+\item{lr_schedule}{Learning-rate schedule.}
 
 \item{weight_decay}{Weight decay.}
 
@@ -67,7 +83,13 @@ mlp(
 
 \item{min_delta}{Minimum validation loss improvement.}
 
-\item{loss}{Reserved for future custom losses.}
+\item{min_epochs}{Minimum number of epochs before early stopping can trigger.}
+
+\item{loss}{Loss function. \code{"focal"} is available for binary classification.}
+
+\item{label_smoothing}{Label smoothing for classification losses.}
+
+\item{focal_gamma}{Focal-loss focusing parameter.}
 
 \item{metrics}{Reserved for future custom metrics.}
 

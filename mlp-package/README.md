@@ -1,7 +1,7 @@
-# mlp
+# tabularmlp
 
-`mlp` provides formula-first multilayer perceptrons for tabular classification
-and regression in R using `torch`.
+`tabularmlp` provides formula-first multilayer perceptrons for tabular
+classification and regression in R using `torch`.
 
 ## Installation
 
@@ -18,7 +18,7 @@ pkgload::load_all(".")
 ## Example
 
 ```r
-library(mlp)
+library(tabularmlp)
 
 fit <- mlp(
   Species ~ .,
@@ -39,5 +39,5 @@ which are available when the package is installed or loaded with
 
 ## Status
 
-Version `0.0.1` supports binary classification, multiclass classification, and
+Version `0.5.0` supports binary classification, multiclass classification, and
 regression for tabular data frames with automatic preprocessing.

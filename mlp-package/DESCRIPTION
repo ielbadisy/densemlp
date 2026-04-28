@@ -1,4 +1,4 @@
-Package: mlp
+Package: tabularmlp
 Title: Tabular Multilayer Perceptrons for Classification and Regression in R
 Version: 0.5.0
 Authors@R: 
@@ -24,5 +24,3 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://example.com/mlp
-BugReports: https://example.com/mlp/issues

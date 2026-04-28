@@ -41,6 +41,13 @@ tune_mlp <- function(formula = NULL,
                      refit = TRUE) {
   task <- match.arg(task)
   device <- match.arg(device)
+  repeats <- normalize_positive_integer(repeats, "repeats")
+  validation <- check_scalar_number(validation, "validation", lower = 0, upper = 1, lower_closed = FALSE, upper_closed = FALSE)
+  patience <- normalize_nonnegative_integer(patience, "patience")
+  min_delta <- check_scalar_number(min_delta, "min_delta", lower = 0)
+  if (!is.null(min_epochs)) {
+    min_epochs <- normalize_positive_integer(min_epochs, "min_epochs")
+  }
 
   using_formula <- !is.null(formula) || !is.null(data)
   using_xy <- !is.null(x) || !is.null(y)
