@@ -207,7 +207,11 @@ tune_mlp <- function(formula = NULL,
     score_mean <- mean(rep_scores)
     score_sd <- stats::sd(rep_scores)
     if (isTRUE(verbose)) {
-      message(sprintf("Candidate %d/%d: %s = %.4f (+/- %.4f)", i, nrow(candidates), metric, score_mean, score_sd))
+      cat(sprintf(
+        "Candidate %d/%d: %s = %.4f (+/- %.4f)\n",
+        i, nrow(candidates), metric, score_mean, score_sd
+      ))
+      utils::flush.console()
     }
 
     results[[i]] <- data.frame(
