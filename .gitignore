@@ -1,8 +1,8 @@
 .Rproj.user/
 .Rhistory
 .Ruserdata
-ARCHIVED/
-mlp-package/mlp.Rcheck/
-mlp-package/*.tar.gz
-mlp-package/vignettes/*.html
+*.Rproj
 *.Rcheck/
+*.tar.gz
+ARCHIVED/
+mlp-package/
