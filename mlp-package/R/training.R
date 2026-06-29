@@ -117,6 +117,11 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
   wait <- 0L
   best_state <- NULL
 
+  if (isTRUE(verbose)) {
+    cat(sprintf("Training %d epochs\n", epochs))
+    utils::flush.console()
+  }
+
   for (epoch in seq_len(epochs)) {
     model$train()
     batch_order <- sample.int(length(train_idx))
@@ -170,10 +175,11 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
         wait <- wait + 1L
       }
       if (isTRUE(verbose)) {
-        message(sprintf(
-          "Epoch %d/%d - train_loss: %.4f - valid_loss: %.4f - valid_metric: %.4f - lr: %.5f",
+        cat(sprintf(
+          "Epoch %d/%d - train_loss: %.4f - valid_loss: %.4f - valid_metric: %.4f - lr: %.5f\n",
           epoch, epochs, train_loss, valid_loss, valid_metric, current_lr
         ))
+        utils::flush.console()
       }
     })
 
