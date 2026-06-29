@@ -1,4 +1,4 @@
 library(testthat)
-library(tabularmlp)
+library(mlp)
 
-test_check("tabularmlp")
+test_check("mlp")

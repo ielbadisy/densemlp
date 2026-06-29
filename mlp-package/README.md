@@ -12,6 +12,8 @@ and interpretation helpers.
 remotes::install_github("ielbadisy/mlp")
 ```
 
+<!-- CRAN first submission: keep the GitHub install instructions until the package is on CRAN. -->
+
 For local development without reinstalling after each edit:
 
 ``` r
@@ -44,10 +46,24 @@ fit <- mlp(
   data = iris,
   epochs = 10,
   validation = 0.2,
-  verbose = FALSE,
+  verbose = TRUE,
   seed = 1
 )
+```
 
+    ## Training 10 epochs
+    ## Epoch 1/10 - train_loss: 1.2860 - valid_loss: 1.3458 - valid_metric: 0.0333 - lr: 0.00100
+    ## Epoch 2/10 - train_loss: 1.0189 - valid_loss: 1.0308 - valid_metric: 0.4667 - lr: 0.00100
+    ## Epoch 3/10 - train_loss: 0.8334 - valid_loss: 0.7775 - valid_metric: 0.7333 - lr: 0.00100
+    ## Epoch 4/10 - train_loss: 0.7153 - valid_loss: 0.6115 - valid_metric: 0.9000 - lr: 0.00100
+    ## Epoch 5/10 - train_loss: 0.6196 - valid_loss: 0.5043 - valid_metric: 0.9000 - lr: 0.00100
+    ## Epoch 6/10 - train_loss: 0.4918 - valid_loss: 0.4336 - valid_metric: 0.9000 - lr: 0.00100
+    ## Epoch 7/10 - train_loss: 0.4702 - valid_loss: 0.3883 - valid_metric: 0.8667 - lr: 0.00100
+    ## Epoch 8/10 - train_loss: 0.4005 - valid_loss: 0.3524 - valid_metric: 0.9000 - lr: 0.00100
+    ## Epoch 9/10 - train_loss: 0.3574 - valid_loss: 0.3257 - valid_metric: 0.9000 - lr: 0.00100
+    ## Epoch 10/10 - train_loss: 0.3554 - valid_loss: 0.3058 - valid_metric: 0.9000 - lr: 0.00100
+
+``` r
 predict(fit, iris[1:5, ], type = "class")
 ```
 
@@ -92,10 +108,10 @@ mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
 
     ## $rmse
     ## [1] 5.818005
-    ##
+    ## 
     ## $mae
     ## [1] 5.026398
-    ##
+    ## 
     ## $rsq
     ## [1] 0.03807414
 
