@@ -1,13 +1,17 @@
-Package: tabularmlp
-Title: Tabular Multilayer Perceptrons for Classification and Regression in R
+Package: mlp
+Title: Multilayer Perceptrons for Tabular Classification and Regression
 Version: 0.5.0
 Authors@R: 
     person("Imad", "EL BADISY", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Author: Imad EL BADISY [aut, cre]
 Maintainer: Imad EL BADISY <elbadisyimad@gmail.com>
-Description: Multilayer perceptrons for tabular classification
-    and regression using 'torch', with automatic preprocessing, prediction,
-    evaluation, and interpretation utilities.
+Description: Fit multilayer perceptrons for tabular classification and
+    regression using 'torch'. The package provides formula and x/y interfaces,
+    automatic preprocessing for numeric and categorical predictors, early
+    stopping, prediction, task-aware metrics, tuning, training-history plots,
+    and permutation importance. Neural network training is implemented with
+    the R package 'torch' by Falbel and Luraschi (2025)
+    <doi:10.32614/CRAN.package.torch>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -17,9 +21,7 @@ Imports:
     stats,
     torch
 Suggests:
-    glmnet,
     knitr,
-    ranger,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
