@@ -1,5 +1,14 @@
 ^\.Rproj\.user$
 ^\.Rhistory$
 ^\.Ruserdata$
-^\.\.Rcheck$
-^mlp_.*\.tar\.gz$
+^\.Rproj$
+^\.gitignore$
+^\.Rbuildignore$
+^cran-comments\.md$
+^ARCHIVED$
+^mlp-package$
+^[.][.]Rcheck$
+^[^/]*[.]Rcheck$
+^.*_[0-9.-]+[.]tar[.]gz$
+^vignettes/.*[.]html$
+^vignettes/.*[.]pdf$
