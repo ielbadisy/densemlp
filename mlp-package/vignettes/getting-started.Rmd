@@ -1,22 +1,48 @@
 ---
-title: "Getting Started"
-output: rmarkdown::html_vignette
+title: "Getting Started with mlp"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Getting Started}
+  %\VignetteIndexEntry{Getting Started with mlp}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-library(tabularmlp)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
 ```
 
-This vignette assumes `tabularmlp` is installed or loaded as a package. If you
-are developing locally from the source tree, use `pkgload::load_all(".")`
-rather than sourcing individual files such as `R/mlp.R`, because `mlp()` relies
-on internal helper functions that are loaded through the package namespace.
-
 ```{r}
+library(mlp)
+```
+
+`mlp` trains multilayer perceptrons for tabular data. It accepts a formula or
+separate `x` and `y` inputs, preprocesses numeric and categorical predictors,
+and returns an `mlp_fit` object with methods for prediction, plotting, metrics,
+tuning, and variable importance.
+
+This vignette documents version `0.5.0`.
+
+This vignette assumes the package is installed or loaded with
+`pkgload::load_all(".")`. Do not source individual files such as `R/mlp.R`
+because exported functions rely on helpers loaded through the package
+namespace.
+
+## Classification
+
+For classification, use a factor outcome. `task = "auto"` infers the task from
+the outcome type, so it can usually be omitted.
+
+```{r classification-fit}
 fit <- mlp(
   Species ~ .,
   data = iris,
@@ -26,26 +52,93 @@ fit <- mlp(
   seed = 1
 )
 
+fit
+```
+
+Class predictions are returned as factors with the same levels as the training
+outcome.
+
+```{r classification-predictions}
 predict(fit, iris[1:5, ], type = "class")
-predict(fit, iris[1:5, ], type = "prob")
+round(predict(fit, iris[1:5, ], type = "prob"), 3)
 ```
 
-```{r}
-# plot_history() is exported directly by tabularmlp
-plot_history(fit)
-```
+Use task-aware metrics to summarize predictions.
 
-```{r}
-# autoplot() is a ggplot2 generic, so qualify it or attach ggplot2
-ggplot2::autoplot(fit)
-```
-
-```{r}
+```{r classification-metrics}
 pred <- predict(fit, iris, type = "class")
 mlp_metrics(iris$Species, pred, task = "classification")
 ```
 
-```{r}
+## Regression
+
+For regression, use a numeric outcome or set `task = "regression"` explicitly.
+
+```{r regression-fit}
+fit_reg <- mlp(
+  mpg ~ disp + hp + wt,
+  data = mtcars,
+  task = "regression",
+  epochs = 10,
+  patience = 3,
+  verbose = FALSE,
+  seed = 2
+)
+
+fit_reg
+```
+
+```{r regression-predictions}
+pred_reg <- predict(fit_reg, mtcars, type = "response")
+head(round(pred_reg, 2))
+mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
+```
+
+## Training Diagnostics
+
+The fitted object stores training history, which can be displayed directly or
+through the `ggplot2::autoplot()` method.
+
+```{r plot-history}
+plot_history(fit)
+```
+
+```{r autoplot-history}
+ggplot2::autoplot(fit)
+```
+
+## Tuning
+
+`tune_mlp()` evaluates a grid of hyperparameters and, by default, refits the
+best configuration on the supplied data.
+
+```{r tuning}
+tuned <- tune_mlp(
+  Species ~ .,
+  data = iris,
+  grid = list(
+    hidden_units = list(c(8), c(16, 8)),
+    activation = c("relu"),
+    dropout = c(0),
+    batch_size = c(8),
+    lr = c(1e-3),
+    epochs = c(10)
+  ),
+  patience = 3,
+  seed = 3,
+  verbose = FALSE
+)
+
+tuned$results
+```
+
+## Permutation Importance
+
+Permutation importance estimates how much a metric changes after shuffling each
+predictor.
+
+```{r permutation-importance}
 importance <- perm_importance(fit, iris[, -5], iris$Species)
+importance$data
 plot(importance)
 ```

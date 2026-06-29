@@ -1,0 +1,113 @@
+---
+output:
+  md_document:
+    variant: gfm
+---
+
+# mlp
+
+`mlp` fits multilayer perceptrons for tabular classification and regression in
+R using `torch`. It is designed for data-frame workflows: pass a formula or
+`x`/`y` inputs, let the package preprocess numeric and categorical predictors,
+then use standard prediction, metrics, tuning, and interpretation helpers.
+
+`mlp` is not yet on CRAN. Install it from GitHub with:
+
+```r
+remotes::install_github("ielbadisy/mlp")
+```
+
+For local development without reinstalling after each edit:
+
+```r
+pkgload::load_all(".")
+```
+
+Do not source individual files such as `R/mlp.R`; the exported functions depend
+on helpers that are loaded through the package namespace.
+
+## Features
+
+- Binary classification, multiclass classification, and regression.
+- Formula and `x`/`y` interfaces.
+- Automatic preprocessing for missing numeric values, missing categorical
+  values, and unseen prediction-time categories.
+- Configurable hidden layers, activation, dropout, batch normalization,
+  residual blocks, gated blocks, and input projection.
+- Early stopping, learning-rate schedules, and common `torch` optimizers.
+- Task-aware predictions, metrics, training-history plots, tuning, and
+  permutation importance.
+
+## Classification Example
+
+```{r classification, echo=TRUE, message=FALSE, warning=FALSE}
+library(mlp)
+
+fit <- mlp(
+  Species ~ .,
+  data = iris,
+  epochs = 10,
+  validation = 0.2,
+  verbose = FALSE,
+  seed = 1
+)
+
+predict(fit, iris[1:5, ], type = "class")
+predict(fit, iris[1:5, ], type = "prob")
+pred <- predict(fit, iris, type = "class")
+mlp_metrics(iris$Species, pred, task = "classification")
+```
+
+## Regression Example
+
+```{r regression, echo=TRUE, message=FALSE, warning=FALSE}
+fit_reg <- mlp(
+  mpg ~ disp + hp + wt,
+  data = mtcars,
+  task = "regression",
+  epochs = 10,
+  validation = 0.2,
+  verbose = FALSE,
+  seed = 2
+)
+
+pred_reg <- predict(fit_reg, mtcars, type = "response")
+mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
+```
+
+## Tuning
+
+```{r tuning, echo=TRUE, message=FALSE, warning=FALSE}
+tuned <- tune_mlp(
+  Species ~ .,
+  data = iris,
+  grid = list(
+    hidden_units = list(c(8), c(16, 8)),
+    activation = c("relu"),
+    dropout = c(0, 0.1),
+    lr = c(1e-3),
+    epochs = c(10)
+  ),
+  patience = 3,
+  seed = 1,
+  verbose = FALSE
+)
+
+tuned$results
+tuned$best_fit
+```
+
+## Interpretation
+
+```{r interpretation, echo=TRUE, message=FALSE, warning=FALSE}
+plot_history(fit)
+ggplot2::autoplot(fit)
+
+importance <- perm_importance(fit, iris[, -5], iris$Species)
+plot(importance)
+```
+
+## Status
+
+Version `0.5.0` supports binary classification, multiclass classification, and
+regression for tabular data frames with automatic preprocessing.
