@@ -17,6 +17,8 @@ then use standard prediction, metrics, tuning, and interpretation helpers.
 remotes::install_github("ielbadisy/mlp")
 ```
 
+<!-- CRAN first submission: keep the GitHub install instructions until the package is on CRAN. -->
+
 For local development without reinstalling after each edit:
 
 ```r
@@ -48,7 +50,7 @@ fit <- mlp(
   data = iris,
   epochs = 10,
   validation = 0.2,
-  verbose = FALSE,
+  verbose = TRUE,
   seed = 1
 )
 

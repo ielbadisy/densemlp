@@ -4,3 +4,5 @@
 ^[^/]*[.]Rcheck$
 ^.*_[0-9.-]+[.]tar[.]gz$
 ^vignettes/.*[.]html$
+^vignettes/.*[.]pdf$
+^.*\.Rproj$
