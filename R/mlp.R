@@ -2,8 +2,10 @@
 #'
 #' @param formula A formula specification.
 #' @param data A data frame used with `formula`.
-#' @param x Predictor data frame or matrix.
-#' @param y Outcome vector.
+#' @param x Predictor data frame or matrix. Retained for backward compatibility
+#'   with the x/y interface.
+#' @param y Outcome vector. Retained for backward compatibility with the x/y
+#'   interface.
 #' @param task Modeling task. `"auto"` infers from the outcome.
 #' @param hidden_units Hidden layer sizes.
 #' @param activation Activation function.
@@ -29,7 +31,9 @@
 #' @param focal_gamma Focal-loss focusing parameter.
 #' @param metrics Reserved for future custom metrics.
 #' @param seed Random seed.
-#' @param verbose Print training progress.
+#' @param verbose Verbosity level. `FALSE` or `0` silences output, `TRUE` or
+#'   `1` prints a standard log, and `2` prints a detailed log.
+#' @param log_every Epoch logging frequency.
 #' @param device Device to use.
 #'
 #' @return An `mlp_fit` object.
@@ -63,6 +67,7 @@ mlp <- function(formula = NULL,
                 metrics = NULL,
                 seed = 1,
                 verbose = TRUE,
+                log_every = 1,
                 device = c("auto", "cpu", "cuda")) {
   activation <- match.arg(activation)
   optimizer <- match.arg(optimizer)
@@ -146,6 +151,7 @@ mlp <- function(formula = NULL,
     min_epochs = min_epochs,
     seed = seed,
     verbose = verbose,
+    log_every = log_every,
     device = resolved_device,
     loss_name = loss_name,
     label_smoothing = label_smoothing,

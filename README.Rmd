@@ -4,14 +4,16 @@ output:
     variant: gfm
 ---
 
-# mlp
+# deepnnet
 
-`mlp` fits multilayer perceptrons for tabular classification and regression in
-R using `torch`. It is designed for data-frame workflows: pass a formula or
-`x`/`y` inputs, let the package preprocess numeric and categorical predictors,
-then use standard prediction, metrics, tuning, and interpretation helpers.
+`deepnnet` fits multilayer perceptrons for tabular classification and regression in
+R using `torch`. It is designed for formula-based workflows: pass a formula and data frame,
+let the package preprocess numeric and categorical predictors, then use
+standard prediction, metrics, tuning, and interpretation helpers.
 
-`mlp` is not yet on CRAN. Install it from GitHub with:
+Source repository: <https://github.com/ielbadisy/mlp>
+
+`deepnnet` is not yet on CRAN. Install it from GitHub with:
 
 ```r
 remotes::install_github("ielbadisy/mlp")
@@ -31,7 +33,7 @@ on helpers that are loaded through the package namespace.
 ## Features
 
 - Binary classification, multiclass classification, and regression.
-- Formula and `x`/`y` interfaces.
+- Formula-based interface.
 - Automatic preprocessing for missing numeric values, missing categorical
   values, and unseen prediction-time categories.
 - Configurable hidden layers, activation, dropout, batch normalization,
@@ -43,7 +45,7 @@ on helpers that are loaded through the package namespace.
 ## Classification Example
 
 ```{r classification, echo=TRUE, message=FALSE, warning=FALSE}
-library(mlp)
+library(deepnnet)
 
 fit <- mlp(
   Species ~ .,

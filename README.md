@@ -1,12 +1,14 @@
-# mlp
+# deepnnet
 
-`mlp` fits multilayer perceptrons for tabular classification and
-regression in R using `torch`. It is designed for data-frame workflows:
-pass a formula or `x`/`y` inputs, let the package preprocess numeric and
-categorical predictors, then use standard prediction, metrics, tuning,
-and interpretation helpers.
+`deepnnet` fits multilayer perceptrons for tabular classification and
+regression in R using `torch`. It is designed for formula-based
+workflows: pass a formula and data frame, let the package preprocess
+numeric and categorical predictors, then use standard prediction,
+metrics, tuning, and interpretation helpers.
 
-`mlp` is not yet on CRAN. Install it from GitHub with:
+Source repository: <https://github.com/ielbadisy/mlp>
+
+`deepnnet` is not yet on CRAN. Install it from GitHub with:
 
 ``` r
 remotes::install_github("ielbadisy/mlp")
@@ -26,7 +28,7 @@ depend on helpers that are loaded through the package namespace.
 ## Features
 
 - Binary classification, multiclass classification, and regression.
-- Formula and `x`/`y` interfaces.
+- Formula-based interface.
 - Automatic preprocessing for missing numeric values, missing
   categorical values, and unseen prediction-time categories.
 - Configurable hidden layers, activation, dropout, batch normalization,
@@ -39,7 +41,7 @@ depend on helpers that are loaded through the package namespace.
 ## Classification Example
 
 ``` r
-library(mlp)
+library(deepnnet)
 
 fit <- mlp(
   Species ~ .,
@@ -51,17 +53,22 @@ fit <- mlp(
 )
 ```
 
-    ## Training 10 epochs
-    ## Epoch 1/10 - train_loss: 1.2860 - valid_loss: 1.3458 - valid_metric: 0.0333 - lr: 0.00100
-    ## Epoch 2/10 - train_loss: 1.0189 - valid_loss: 1.0308 - valid_metric: 0.4667 - lr: 0.00100
-    ## Epoch 3/10 - train_loss: 0.8334 - valid_loss: 0.7775 - valid_metric: 0.7333 - lr: 0.00100
-    ## Epoch 4/10 - train_loss: 0.7153 - valid_loss: 0.6115 - valid_metric: 0.9000 - lr: 0.00100
-    ## Epoch 5/10 - train_loss: 0.6196 - valid_loss: 0.5043 - valid_metric: 0.9000 - lr: 0.00100
-    ## Epoch 6/10 - train_loss: 0.4918 - valid_loss: 0.4336 - valid_metric: 0.9000 - lr: 0.00100
-    ## Epoch 7/10 - train_loss: 0.4702 - valid_loss: 0.3883 - valid_metric: 0.8667 - lr: 0.00100
-    ## Epoch 8/10 - train_loss: 0.4005 - valid_loss: 0.3524 - valid_metric: 0.9000 - lr: 0.00100
-    ## Epoch 9/10 - train_loss: 0.3574 - valid_loss: 0.3257 - valid_metric: 0.9000 - lr: 0.00100
-    ## Epoch 10/10 - train_loss: 0.3554 - valid_loss: 0.3058 - valid_metric: 0.9000 - lr: 0.00100
+    ## Training MLP
+    ## Task: multiclass classification
+    ## Optimizer: Adam
+    ## Learning rate: 0.001
+    ## Epochs: 10
+    ## Batch size: 32
+    ## Epoch 01/10 | train_loss: 1.2860 | valid_loss: 1.3458 | valid_acc: 0.0333
+    ## Epoch 02/10 | train_loss: 1.0189 | valid_loss: 1.0308 | valid_acc: 0.4667
+    ## Epoch 03/10 | train_loss: 0.8334 | valid_loss: 0.7775 | valid_acc: 0.7333
+    ## Epoch 04/10 | train_loss: 0.7153 | valid_loss: 0.6115 | valid_acc: 0.9000
+    ## Epoch 05/10 | train_loss: 0.6196 | valid_loss: 0.5043 | valid_acc: 0.9000
+    ## Epoch 06/10 | train_loss: 0.4918 | valid_loss: 0.4336 | valid_acc: 0.9000
+    ## Epoch 07/10 | train_loss: 0.4702 | valid_loss: 0.3883 | valid_acc: 0.8667
+    ## Epoch 08/10 | train_loss: 0.4005 | valid_loss: 0.3524 | valid_acc: 0.9000
+    ## Epoch 09/10 | train_loss: 0.3574 | valid_loss: 0.3257 | valid_acc: 0.9000
+    ## Epoch 10/10 | train_loss: 0.3554 | valid_loss: 0.3058 | valid_acc: 0.9000
 
 ``` r
 predict(fit, iris[1:5, ], type = "class")

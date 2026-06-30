@@ -10,13 +10,16 @@ test_that("binary classification works end to end", {
   expect_equal(levels(pred), levels(data$am))
 })
 
-test_that("verbose training prints epoch progress to the console", {
+test_that("verbose training prints a clean header and epoch progress", {
   output <- capture.output(
     mlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = TRUE, seed = 1)
   )
 
-  expect_true(any(grepl("^Training 2 epochs$", output)))
-  expect_true(any(grepl("^Epoch 1/2 -", output)))
+  expect_true(any(grepl("^Training MLP$", output)))
+  expect_true(any(grepl("^Task: multiclass classification$", output)))
+  expect_true(any(grepl("^Learning rate: ", output)))
+  expect_true(any(grepl("^Epoch 1/2 \\| train_loss:", output)))
+  expect_false(any(grepl("lr:", output[grepl("^Epoch ", output)], fixed = TRUE)))
 })
 
 test_that("multiclass classification preserves levels", {

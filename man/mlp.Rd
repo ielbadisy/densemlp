@@ -34,6 +34,7 @@ mlp(
   metrics = NULL,
   seed = 1,
   verbose = TRUE,
+  log_every = 1,
   device = c("auto", "cpu", "cuda")
 )
 }
@@ -42,9 +43,11 @@ mlp(
 
 \item{data}{A data frame used with \code{formula}.}
 
-\item{x}{Predictor data frame or matrix.}
+\item{x}{Predictor data frame or matrix. Retained for backward compatibility
+with the x/y interface.}
 
-\item{y}{Outcome vector.}
+\item{y}{Outcome vector. Retained for backward compatibility with the x/y
+interface.}
 
 \item{task}{Modeling task. \code{"auto"} infers from the outcome.}
 
@@ -95,7 +98,10 @@ blocks.}
 
 \item{seed}{Random seed.}
 
-\item{verbose}{Print training progress.}
+\item{verbose}{Verbosity level. \code{FALSE} or \code{0} silences output, \code{TRUE} or
+\code{1} prints a standard log, and \code{2} prints a detailed log.}
+
+\item{log_every}{Epoch logging frequency.}
 
 \item{device}{Device to use.}
 }
@@ -103,5 +109,5 @@ blocks.}
 An \code{mlp_fit} object.
 }
 \description{
-Fit a tabular multilayer perceptron
+Fit a tabular multilayer perceptron.
 }
