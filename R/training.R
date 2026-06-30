@@ -64,9 +64,11 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
                         dropout, batch_norm, residual, gated, input_projection,
                         output_dim, epochs, batch_size, lr, optimizer, lr_schedule,
                         weight_decay, validation, early_stopping, patience,
-                        min_delta, min_epochs, seed, verbose, device,
+                        min_delta, min_epochs, seed, verbose, log_every, device,
                         loss_name, label_smoothing = 0, focal_gamma = 2) {
   set_reproducible_seed(seed)
+  verbose <- normalize_verbose(verbose)
+  log_every <- normalize_log_every(log_every)
 
   n <- nrow(x)
   valid_n <- max(1L, floor(n * validation))
@@ -110,19 +112,36 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
   scheduler <- build_scheduler(lr_schedule, opt, epochs)
   criterion <- make_criterion(task, outcome_type, loss_name, label_smoothing, focal_gamma)
 
+  metric_name <- if (identical(task, "regression")) "rmse" else "accuracy"
+  task_label <- if (identical(task, "regression")) {
+    "regression"
+  } else if (identical(outcome_type, "binary")) {
+    "binary classification"
+  } else {
+    "multiclass classification"
+  }
+
   history <- vector("list", epochs)
   best_loss <- Inf
   best_metric <- -Inf
   best_epoch <- 1L
   wait <- 0L
   best_state <- NULL
+  last_reported_lr <- lr
 
-  if (isTRUE(verbose)) {
-    cat(sprintf("Training %d epochs\n", epochs))
+  if (verbose > 0L) {
+    cat(paste(format_train_header(list(
+      task = task_label,
+      optimizer = optimizer,
+      lr = lr,
+      epochs = epochs,
+      batch_size = batch_size
+    )), collapse = "\n"), "\n", sep = "")
     utils::flush.console()
   }
 
   for (epoch in seq_len(epochs)) {
+    epoch_start <- proc.time()[["elapsed"]]
     model$train()
     batch_order <- sample.int(length(train_idx))
     batches <- split(batch_order, ceiling(seq_along(batch_order) / batch_size))
@@ -174,12 +193,23 @@ fit_network <- function(x, y, task, outcome_type, hidden_units, activation,
       } else if (epoch >= min_epochs) {
         wait <- wait + 1L
       }
-      if (isTRUE(verbose)) {
-        cat(sprintf(
-          "Epoch %d/%d - train_loss: %.4f - valid_loss: %.4f - valid_metric: %.4f - lr: %.5f\n",
-          epoch, epochs, train_loss, valid_loss, valid_metric, current_lr
-        ))
+
+      if (verbose > 0L && should_log_epoch(epoch, epochs, log_every)) {
+        epoch_time <- proc.time()[["elapsed"]] - epoch_start
+        show_lr <- verbose >= 2L || !isTRUE(all.equal(current_lr, last_reported_lr))
+        cat(format_epoch_log(
+          epoch = epoch,
+          epochs = epochs,
+          train_loss = train_loss,
+          valid_loss = valid_loss,
+          valid_metric = valid_metric,
+          metric_name = metric_name,
+          lr = current_lr,
+          show_lr = show_lr,
+          epoch_time = if (verbose >= 2L) epoch_time else NULL
+        ), "\n", sep = "")
         utils::flush.console()
+        last_reported_lr <- current_lr
       }
     })
 

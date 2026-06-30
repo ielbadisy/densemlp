@@ -1,11 +1,11 @@
 ---
-title: "Getting Started with mlp"
+title: "Getting Started with deepnnet"
 output:
   pdf_document:
     toc: true
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Getting Started with mlp}
+  %\VignetteIndexEntry{Getting Started with deepnnet}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -22,13 +22,12 @@ knitr::opts_chunk$set(
 ```
 
 ```{r}
-library(mlp)
+library(deepnnet)
 ```
 
-`mlp` trains multilayer perceptrons for tabular data. It accepts a formula or
-separate `x` and `y` inputs, preprocesses numeric and categorical predictors,
-and returns an `mlp_fit` object with methods for prediction, plotting, metrics,
-tuning, and variable importance.
+`mlp` trains multilayer perceptrons for tabular data. It accepts a formula and data frame, preprocesses numeric and categorical
+predictors, and returns an `mlp_fit` object with methods for prediction,
+plotting, metrics, tuning, and variable importance.
 
 This vignette documents version `0.5.0`.
 

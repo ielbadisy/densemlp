@@ -1,4 +1,4 @@
 library(testthat)
-library(mlp)
+library(deepnnet)
 
-test_check("mlp")
+test_check("deepnnet")
