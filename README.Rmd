@@ -4,19 +4,19 @@ output:
     variant: gfm
 ---
 
+
 # densemlp
 
-`densemlp` provides dense multilayer perceptron models for tabular regression and classification in R. The package is built around fully connected feed-forward neural network layers and supports optional modern extensions such as dropout, batch normalization, residual connections, gated blocks, and input projection.
+`densemlp` provides dense multilayer perceptron models for tabular regression and classification in R. The package is built around fully connected feed-forward neural network layers, with optional extensions such as dropout, batch normalization, residual connections, gated blocks, and input projection.
 
-The models implemented in `densemlp` are dense feed-forward multilayer perceptrons. Optional components such as dropout, batch normalization, residual connections, gated blocks, and input projection extend the basic dense multilayer perceptron architecture but do not change the model class into a convolutional, recurrent, transformer, or tree-based model.
+These extensions enrich the basic dense MLP architecture without changing its model class: the models remain dense feed-forward neural networks, not convolutional, recurrent, transformer-based, or tree-based models.
 
 `task` is optional in the main API. When it is set to `"auto"` or omitted, the task is inferred from the outcome. Use it only when you need to override that inference.
 
 ## Why `densemlp`?
 
-The name `densemlp` reflects the core architecture used by the package: multilayer perceptrons built from dense, fully connected neural network layers. Additional options such as dropout, batch normalization, residual connections, gated blocks, and input projection are implemented around these dense blocks.
+The name `densemlp` reflects the package design: dense, fully connected neural network blocks for tabular data, extended with optional modern components when needed.
 
-Source repository: <https://github.com/ielbadisy/densemlp>
 
 Install it from GitHub with:
 
@@ -30,19 +30,18 @@ For local development without reinstalling after each edit:
 pkgload::load_all(".")
 ```
 
-Do not source individual files such as `R/densemlp.R`; the exported functions depend
-on helpers that are loaded through the package namespace.
+Do not source individual files such as `R/densemlp.R`; the exported functions depend on helpers that are loaded through the package namespace.
 
 ## Features
 
-- Binary classification, multiclass classification, and regression.
-- Formula-based interface.
-- Automatic preprocessing for missing numeric values, missing categorical
+* Binary classification, multiclass classification, and regression.
+* Formula-based interface.
+* Automatic preprocessing for missing numeric values, missing categorical
   values, and unseen prediction-time categories.
-- Configurable hidden layers, activation, dropout, batch normalization,
+* Configurable hidden layers, activation functions, dropout, batch normalization,
   residual blocks, gated blocks, and input projection.
-- Early stopping, learning-rate schedules, and common `torch` optimizers.
-- Task-aware predictions, metrics, training-history plots, tuning, and
+* Early stopping, learning-rate schedules, and common `torch` optimizers.
+* Task-aware predictions, metrics, training-history plots, tuning, and
   permutation importance.
 
 ## Classification Example
@@ -61,6 +60,7 @@ fit <- densemlp(
 
 predict(fit, iris[1:5, ], type = "class")
 predict(fit, iris[1:5, ], type = "prob")
+
 pred <- predict(fit, iris, type = "class")
 densemlp_metrics(iris$Species, pred)
 ```
@@ -115,5 +115,4 @@ plot(importance)
 
 ## Status
 
-Version `0.5.0` supports binary classification, multiclass classification, and
-regression for tabular data frames with automatic preprocessing.
+Version `0.5.0` supports binary classification, multiclass classification, and regression for tabular data frames with automatic preprocessing.
