@@ -1,4 +1,4 @@
 library(testthat)
-library(deepnnet)
+library(densemlp)
 
-test_check("deepnnet")
+test_check("densemlp")

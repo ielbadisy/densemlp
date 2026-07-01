@@ -1,5 +1,5 @@
-test_that("tune_mlp returns ranked results and a fitted model", {
-  tuned <- tune_mlp(
+test_that("tune_densemlp returns ranked results and a fitted model", {
+  tuned <- tune_densemlp(
     Species ~ .,
     data = iris,
     grid = list(
@@ -15,13 +15,13 @@ test_that("tune_mlp returns ranked results and a fitted model", {
   )
 
   expect_true(is.data.frame(tuned$results))
-  expect_s3_class(tuned$best_fit, "mlp_fit")
+  expect_s3_class(tuned$best_fit, "densemlp_fit")
   expect_gte(nrow(tuned$results), 2)
 })
 
 test_that("verbose tuning prints candidate progress to the console", {
   output <- capture.output(
-    tune_mlp(
+    tune_densemlp(
       Species ~ .,
       data = iris,
       grid = list(

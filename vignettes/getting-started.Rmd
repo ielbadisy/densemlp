@@ -1,11 +1,11 @@
 ---
-title: "Getting Started with deepnnet"
+title: "Getting Started with densemlp"
 output:
   pdf_document:
     toc: true
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Getting Started with deepnnet}
+  %\VignetteIndexEntry{Getting Started with densemlp}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -22,27 +22,43 @@ knitr::opts_chunk$set(
 ```
 
 ```{r}
-library(deepnnet)
+library(densemlp)
 ```
 
-`mlp` trains multilayer perceptrons for tabular data. It accepts a formula and data frame, preprocesses numeric and categorical
-predictors, and returns an `mlp_fit` object with methods for prediction,
+`densemlp` trains dense feed-forward multilayer perceptrons for tabular data.
+It accepts a formula and data frame, preprocesses numeric and categorical
+predictors, and returns a `densemlp_fit` object with methods for prediction,
 plotting, metrics, tuning, and variable importance.
+
+The models implemented in `densemlp` are dense feed-forward multilayer
+perceptrons. Optional components such as dropout, batch normalization,
+residual connections, gated blocks, and input projection extend the basic
+dense multilayer perceptron architecture but do not change the model class
+into a convolutional, recurrent, transformer, or tree-based model.
+
+`task` is optional in the main API. When it is set to `"auto"` or omitted, the
+task is inferred from the outcome. Use it only when you need to override that
+inference.
 
 This vignette documents version `0.5.0`.
 
 This vignette assumes the package is installed or loaded with
-`pkgload::load_all(".")`. Do not source individual files such as `R/mlp.R`
+`pkgload::load_all(".")`. Do not source individual files such as `R/densemlp.R`
 because exported functions rely on helpers loaded through the package
 namespace.
 
+`densemlp` implements dense feed-forward multilayer perceptrons for tabular
+data. Each hidden block is centered on a fully connected transformation,
+optionally combined with activation functions, dropout, batch normalization,
+residual connections, gated mechanisms, and input projection.
+
 ## Classification
 
-For classification, use a factor outcome. `task = "auto"` infers the task from
-the outcome type, so it can usually be omitted.
+For classification, use a factor outcome. The task is inferred from the
+outcome type, so `task` can usually be omitted.
 
 ```{r classification-fit}
-fit <- mlp(
+fit <- densemlp(
   Species ~ .,
   data = iris,
   epochs = 10,
@@ -66,18 +82,18 @@ Use task-aware metrics to summarize predictions.
 
 ```{r classification-metrics}
 pred <- predict(fit, iris, type = "class")
-mlp_metrics(iris$Species, pred, task = "classification")
+densemlp_metrics(iris$Species, pred)
 ```
 
 ## Regression
 
-For regression, use a numeric outcome or set `task = "regression"` explicitly.
+For regression, use a numeric outcome. The task is inferred automatically for
+numeric outcomes.
 
 ```{r regression-fit}
-fit_reg <- mlp(
+fit_reg <- densemlp(
   mpg ~ disp + hp + wt,
   data = mtcars,
-  task = "regression",
   epochs = 10,
   patience = 3,
   verbose = FALSE,
@@ -90,7 +106,7 @@ fit_reg
 ```{r regression-predictions}
 pred_reg <- predict(fit_reg, mtcars, type = "response")
 head(round(pred_reg, 2))
-mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
+densemlp_metrics(mtcars$mpg, pred_reg)
 ```
 
 ## Training Diagnostics
@@ -108,11 +124,11 @@ ggplot2::autoplot(fit)
 
 ## Tuning
 
-`tune_mlp()` evaluates a grid of hyperparameters and, by default, refits the
+`tune_densemlp()` evaluates a grid of hyperparameters and, by default, refits the
 best configuration on the supplied data.
 
 ```{r tuning}
-tuned <- tune_mlp(
+tuned <- tune_densemlp(
   Species ~ .,
   data = iris,
   grid = list(

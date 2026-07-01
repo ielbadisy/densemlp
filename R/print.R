@@ -1,12 +1,12 @@
-#' Print a fitted MLP
+#' Print a fitted dense multilayer perceptron
 #'
-#' @param x A fitted `mlp_fit` object.
+#' @param x A fitted `densemlp_fit` object.
 #' @param ... Unused.
 #'
 #' @return `x`, invisibly.
 #' @export
-print.mlp_fit <- function(x, ...) {
-  cat("<mlp_fit>\n")
+print.densemlp_fit <- function(x, ...) {
+  cat("<densemlp_fit>\n")
   cat(sprintf("Task: %s\n", x$task))
   if (!is.null(x$levels)) {
     cat(sprintf("Outcome levels: %s\n", paste(x$levels, collapse = ", ")))

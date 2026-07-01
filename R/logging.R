@@ -38,7 +38,7 @@ format_learning_rate <- function(lr, digits = 5) {
 #' @keywords internal
 format_train_header <- function(config) {
   c(
-    "Training MLP",
+    "Training dense multilayer perceptron",
     sprintf("Task: %s", config$task),
     sprintf("Optimizer: %s", paste0(toupper(substr(config$optimizer, 1, 1)), substr(config$optimizer, 2, nchar(config$optimizer)))),
     sprintf("Learning rate: %s", trimws(formatC(config$lr, format = "fg", digits = 6))),

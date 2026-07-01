@@ -1,10 +1,10 @@
 # CRAN comments
 
-This is the first CRAN submission for `deepnnet`.
+This is the first CRAN submission for `densemlp`.
 
 ## Package notes
 
-- The package provides a formula interface for multilayer perceptrons on tabular data.
+- The package provides a formula interface for dense multilayer perceptrons on tabular data.
 - Unit tests are included under `tests/testthat/`.
 - A vignette is included under `vignettes/`.
 

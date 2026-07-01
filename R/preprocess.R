@@ -53,7 +53,7 @@ train_blueprint <- function(x) {
     numeric = numeric_info,
     categorical = categorical_info
   )
-  class(blueprint) <- "mlp_blueprint"
+  class(blueprint) <- "densemlp_blueprint"
   blueprint
 }
 

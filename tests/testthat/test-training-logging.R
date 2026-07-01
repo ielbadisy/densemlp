@@ -43,16 +43,16 @@ test_that("should_log_epoch respects the logging cadence", {
 
 test_that("verbose zero stays silent", {
   output <- capture.output(
-    mlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 0, seed = 1)
+    densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 0, seed = 1)
   )
-  expect_false(any(grepl("^(Training MLP|Epoch )", output)))
+  expect_false(any(grepl("^(Training dense multilayer perceptron|Epoch )", output)))
 })
 
 test_that("verbose one prints a header and no per-epoch learning rate", {
   output <- capture.output(
-    mlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 1, seed = 2)
+    densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 1, seed = 2)
   )
-  expect_true(any(grepl("^Training MLP$", output)))
+  expect_true(any(grepl("^Training dense multilayer perceptron$", output)))
   expect_true(any(grepl("^Task: multiclass classification$", output)))
   expect_true(any(grepl("^Learning rate: ", output)))
   epoch_lines <- output[grepl("^Epoch ", output)]
@@ -62,7 +62,7 @@ test_that("verbose one prints a header and no per-epoch learning rate", {
 
 test_that("verbose two prints per-epoch learning rate and timing", {
   output <- capture.output(
-    mlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 2, seed = 3)
+    densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 2, seed = 3)
   )
   epoch_lines <- output[grepl("^Epoch ", output)]
   expect_true(any(grepl("lr:", epoch_lines, fixed = TRUE)))
@@ -71,7 +71,7 @@ test_that("verbose two prints per-epoch learning rate and timing", {
 
 test_that("log_every skips intermediate epochs but keeps the first and last", {
   output <- capture.output(
-    mlp(
+    densemlp(
       Species ~ .,
       data = iris,
       epochs = 20,
