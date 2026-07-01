@@ -1,18 +1,18 @@
 #' Plot training history
 #'
-#' @param object A fitted `mlp_fit` object.
+#' @param object A fitted `densemlp_fit` object.
 #' @param ... Unused.
 #'
 #' @return A ggplot object.
 #' @importFrom ggplot2 autoplot
 #' @export
-autoplot.mlp_fit <- function(object, ...) {
+autoplot.densemlp_fit <- function(object, ...) {
   plot_history(object)
 }
 
 #' Plot training history
 #'
-#' @param object A fitted `mlp_fit` object.
+#' @param object A fitted `densemlp_fit` object.
 #'
 #' @return A ggplot object.
 #' @importFrom ggplot2 aes geom_line labs theme_minimal

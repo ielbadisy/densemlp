@@ -34,16 +34,16 @@ predict_from_matrix <- function(model, matrix, outcome, device, type) {
   factor(outcome$levels[max.col(prob_mat)], levels = outcome$levels)
 }
 
-#' Predict from a fitted MLP
+#' Predict from a fitted dense multilayer perceptron
 #'
-#' @param object A fitted `mlp_fit` object.
+#' @param object A fitted `densemlp_fit` object.
 #' @param new_data New predictor data.
 #' @param type Prediction type.
 #' @param ... Unused.
 #'
 #' @return Predictions in a task-appropriate format.
 #' @export
-predict.mlp_fit <- function(object, new_data, type = NULL, ...) {
+predict.densemlp_fit <- function(object, new_data, type = NULL, ...) {
   if (is.null(type)) {
     type <- if (identical(object$task, "regression")) "response" else "class"
   }

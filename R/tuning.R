@@ -1,10 +1,11 @@
-#' Tune an MLP over a task-aware hyperparameter grid
+#' Tune a dense multilayer perceptron over a task-aware hyperparameter grid
 #'
 #' @param formula A formula specification.
 #' @param data A data frame used with `formula`.
 #' @param x Predictor data frame or matrix.
 #' @param y Outcome vector.
-#' @param task Modeling task. `"auto"` infers from the outcome.
+#' @param task Optional task override. `"auto"` infers the task from the
+#'   outcome.
 #' @param grid A named list of candidate values.
 #' @param metric Optional ranking metric. Use `"accuracy"` for classification
 #'   and `"rmse"` or `"valid_loss"` for regression.
@@ -22,23 +23,23 @@
 #' @return A list with ranked tuning results and, when `refit = TRUE`, the best
 #'   fitted model.
 #' @export
-tune_mlp <- function(formula = NULL,
-                     data = NULL,
-                     x = NULL,
-                     y = NULL,
-                     task = c("auto", "classification", "regression"),
-                     grid = NULL,
-                     metric = NULL,
-                     validation = 0.2,
-                     early_stopping = TRUE,
-                     patience = 10,
-                     min_delta = 0,
-                     min_epochs = NULL,
-                     seed = 1,
-                     repeats = 3,
-                     verbose = FALSE,
-                     device = c("auto", "cpu", "cuda"),
-                     refit = TRUE) {
+tune_densemlp <- function(formula = NULL,
+                          data = NULL,
+                          x = NULL,
+                          y = NULL,
+                          task = c("auto", "classification", "regression"),
+                          grid = NULL,
+                          metric = NULL,
+                          validation = 0.2,
+                          early_stopping = TRUE,
+                          patience = 10,
+                          min_delta = 0,
+                          min_epochs = NULL,
+                          seed = 1,
+                          repeats = 3,
+                          verbose = FALSE,
+                          device = c("auto", "cpu", "cuda"),
+                          refit = TRUE) {
   task <- match.arg(task)
   device <- match.arg(device)
   repeats <- normalize_positive_integer(repeats, "repeats")
@@ -161,7 +162,7 @@ tune_mlp <- function(formula = NULL,
     rep_scores <- numeric(repeats)
 
     for (rep_idx in seq_len(repeats)) {
-      fit <- mlp(
+      fit <- densemlp(
         formula = formula,
         data = data,
         x = x,
@@ -249,7 +250,7 @@ tune_mlp <- function(formula = NULL,
   if (isTRUE(refit)) {
     best_hidden <- as.integer(strsplit(best_row$hidden_units, "-", fixed = TRUE)[[1L]])
     best_dropout <- as.numeric(strsplit(best_row$dropout, "-", fixed = TRUE)[[1L]])
-    best_fit <- mlp(
+    best_fit <- densemlp(
       formula = formula,
       data = data,
       x = x,
@@ -289,6 +290,6 @@ tune_mlp <- function(formula = NULL,
       best_fit = best_fit,
       metric = metric
     ),
-    class = "mlp_tuned"
+    class = "densemlp_tuned"
   )
 }

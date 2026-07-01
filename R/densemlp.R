@@ -1,4 +1,4 @@
-#' Fit a tabular multilayer perceptron
+#' Fit a tabular dense multilayer perceptron
 #'
 #' @param formula A formula specification.
 #' @param data A data frame used with `formula`.
@@ -6,7 +6,8 @@
 #'   with the x/y interface.
 #' @param y Outcome vector. Retained for backward compatibility with the x/y
 #'   interface.
-#' @param task Modeling task. `"auto"` infers from the outcome.
+#' @param task Optional task override. `"auto"` infers the task from the
+#'   outcome.
 #' @param hidden_units Hidden layer sizes.
 #' @param activation Activation function.
 #' @param dropout Dropout probability.
@@ -36,39 +37,39 @@
 #' @param log_every Epoch logging frequency.
 #' @param device Device to use.
 #'
-#' @return An `mlp_fit` object.
+#' @return A `densemlp_fit` object.
 #' @export
-mlp <- function(formula = NULL,
-                data = NULL,
-                x = NULL,
-                y = NULL,
-                task = c("auto", "classification", "regression"),
-                hidden_units = c(64, 32),
-                activation = c("relu", "tanh", "gelu"),
-                dropout = 0,
-                batch_norm = TRUE,
-                residual = FALSE,
-                gated = FALSE,
-                input_projection = NULL,
-                epochs = 100,
-                batch_size = 32,
-                lr = 1e-3,
-                optimizer = c("adam", "sgd"),
-                lr_schedule = c("none", "cosine", "step"),
-                weight_decay = 0,
-                validation = 0.2,
-                early_stopping = TRUE,
-                patience = 10,
-                min_delta = 0,
-                min_epochs = max(10L, floor(epochs * 0.2)),
-                loss = NULL,
-                label_smoothing = 0,
-                focal_gamma = 2,
-                metrics = NULL,
-                seed = 1,
-                verbose = TRUE,
-                log_every = 1,
-                device = c("auto", "cpu", "cuda")) {
+densemlp <- function(formula = NULL,
+                     data = NULL,
+                     x = NULL,
+                     y = NULL,
+                     task = c("auto", "classification", "regression"),
+                     hidden_units = c(64, 32),
+                     activation = c("relu", "tanh", "gelu"),
+                     dropout = 0,
+                     batch_norm = TRUE,
+                     residual = FALSE,
+                     gated = FALSE,
+                     input_projection = NULL,
+                     epochs = 100,
+                     batch_size = 32,
+                     lr = 1e-3,
+                     optimizer = c("adam", "sgd"),
+                     lr_schedule = c("none", "cosine", "step"),
+                     weight_decay = 0,
+                     validation = 0.2,
+                     early_stopping = TRUE,
+                     patience = 10,
+                     min_delta = 0,
+                     min_epochs = max(10L, floor(epochs * 0.2)),
+                     loss = NULL,
+                     label_smoothing = 0,
+                     focal_gamma = 2,
+                     metrics = NULL,
+                     seed = 1,
+                     verbose = TRUE,
+                     log_every = 1,
+                     device = c("auto", "cpu", "cuda")) {
   activation <- match.arg(activation)
   optimizer <- match.arg(optimizer)
   lr_schedule <- match.arg(lr_schedule)
@@ -198,6 +199,6 @@ mlp <- function(formula = NULL,
     device = resolved_device,
     outcome_scale = list(center = outcome$y_center, scale = outcome$y_scale)
   )
-  class(fit) <- "mlp_fit"
+  class(fit) <- "densemlp_fit"
   fit
 }

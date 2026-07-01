@@ -7,7 +7,7 @@
 perm_importance(object, new_data, truth, metric = NULL, seed = object$seed)
 }
 \arguments{
-\item{object}{A fitted \code{mlp_fit} object.}
+\item{object}{A fitted \code{densemlp_fit} object.}
 
 \item{new_data}{Evaluation data frame.}
 
@@ -19,7 +19,7 @@ for regression.}
 \item{seed}{Random seed used for shuffling.}
 }
 \value{
-An \code{mlp_importance} object.
+A \code{densemlp_importance} object.
 }
 \description{
 Permutation variable importance

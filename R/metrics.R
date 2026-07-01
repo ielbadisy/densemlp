@@ -1,14 +1,15 @@
-#' Compute task-aware metrics
+#' Compute densemlp metrics
 #'
 #' @param truth Ground truth values.
 #' @param estimate Predicted classes for classification or numeric predictions
 #'   for regression.
-#' @param task Optional task override.
+#' @param task Optional task override. When `NULL`, the task is inferred from
+#'   `truth` and `estimate`.
 #' @param prob Optional class probabilities.
 #'
 #' @return A named list of metrics.
 #' @export
-mlp_metrics <- function(truth, estimate, task = NULL, prob = NULL) {
+densemlp_metrics <- function(truth, estimate, task = NULL, prob = NULL) {
   if (is.null(task)) {
     task <- if (is.numeric(truth) && is.numeric(estimate)) "regression" else "classification"
   }

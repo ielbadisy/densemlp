@@ -1,20 +1,37 @@
-# deepnnet
+# densemlp
 
-`deepnnet` fits multilayer perceptrons for tabular classification and
-regression in R using `torch`. It is designed for formula-based
-workflows: pass a formula and data frame, let the package preprocess
-numeric and categorical predictors, then use standard prediction,
-metrics, tuning, and interpretation helpers.
+`densemlp` provides dense multilayer perceptron models for tabular
+regression and classification in R. The package is built around fully
+connected feed-forward neural network layers and supports optional
+modern extensions such as dropout, batch normalization, residual
+connections, gated blocks, and input projection.
 
-Source repository: <https://github.com/ielbadisy/mlp>
+The models implemented in `densemlp` are dense feed-forward multilayer
+perceptrons. Optional components such as dropout, batch normalization,
+residual connections, gated blocks, and input projection extend the
+basic dense multilayer perceptron architecture but do not change the
+model class into a convolutional, recurrent, transformer, or tree-based
+model.
 
-`deepnnet` is not yet on CRAN. Install it from GitHub with:
+`task` is optional in the main API. When it is set to `"auto"` or
+omitted, the task is inferred from the outcome. Use it only when you
+need to override that inference.
+
+## Why `densemlp`?
+
+The name `densemlp` reflects the core architecture used by the package:
+multilayer perceptrons built from dense, fully connected neural network
+layers. Additional options such as dropout, batch normalization,
+residual connections, gated blocks, and input projection are implemented
+around these dense blocks.
+
+Source repository: <https://github.com/ielbadisy/densemlp>
+
+Install it from GitHub with:
 
 ``` r
-remotes::install_github("ielbadisy/mlp")
+remotes::install_github("ielbadisy/densemlp")
 ```
-
-<!-- CRAN first submission: keep the GitHub install instructions until the package is on CRAN. -->
 
 For local development without reinstalling after each edit:
 
@@ -22,8 +39,9 @@ For local development without reinstalling after each edit:
 pkgload::load_all(".")
 ```
 
-Do not source individual files such as `R/mlp.R`; the exported functions
-depend on helpers that are loaded through the package namespace.
+Do not source individual files such as `R/densemlp.R`; the exported
+functions depend on helpers that are loaded through the package
+namespace.
 
 ## Features
 
@@ -41,9 +59,9 @@ depend on helpers that are loaded through the package namespace.
 ## Classification Example
 
 ``` r
-library(deepnnet)
+library(densemlp)
 
-fit <- mlp(
+fit <- densemlp(
   Species ~ .,
   data = iris,
   epochs = 10,
@@ -53,7 +71,7 @@ fit <- mlp(
 )
 ```
 
-    ## Training MLP
+    ## Training dense multilayer perceptron
     ## Task: multiclass classification
     ## Optimizer: Adam
     ## Learning rate: 0.001
@@ -90,7 +108,7 @@ predict(fit, iris[1:5, ], type = "prob")
 
 ``` r
 pred <- predict(fit, iris, type = "class")
-mlp_metrics(iris$Species, pred, task = "classification")
+densemlp_metrics(iris$Species, pred)
 ```
 
     ## $accuracy
@@ -99,10 +117,9 @@ mlp_metrics(iris$Species, pred, task = "classification")
 ## Regression Example
 
 ``` r
-fit_reg <- mlp(
+fit_reg <- densemlp(
   mpg ~ disp + hp + wt,
   data = mtcars,
-  task = "regression",
   epochs = 10,
   validation = 0.2,
   verbose = FALSE,
@@ -110,7 +127,7 @@ fit_reg <- mlp(
 )
 
 pred_reg <- predict(fit_reg, mtcars, type = "response")
-mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
+densemlp_metrics(mtcars$mpg, pred_reg)
 ```
 
     ## $rmse
@@ -125,7 +142,7 @@ mlp_metrics(mtcars$mpg, pred_reg, task = "regression")
 ## Tuning
 
 ``` r
-tuned <- tune_mlp(
+tuned <- tune_densemlp(
   Species ~ .,
   data = iris,
   grid = list(
@@ -163,7 +180,7 @@ tuned$results
 tuned$best_fit
 ```
 
-    ## <mlp_fit>
+    ## <densemlp_fit>
     ## Task: classification
     ## Outcome levels: setosa, versicolor, virginica
     ## Encoded features: 4

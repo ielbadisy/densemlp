@@ -1,8 +1,7 @@
 ^README\.Rmd$
 ^README_files$
 ^cran-comments\.md$
-^mlp\.Rproj$
-^mlp-package$
+^densemlp\.Rproj$
 ^.*\.Rcheck$
 ^\.Rproj\.user$
 ^ARCHIVED$

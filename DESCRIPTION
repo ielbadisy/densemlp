@@ -1,19 +1,17 @@
-Package: deepnnet
-Title: Deep Neural Networks for Tabular Classification and Regression
+Package: densemlp
+Title: Dense Multilayer Perceptrons for Tabular Classification and Regression
 Version: 0.5.0
 Authors@R: 
     person("Imad", "EL BADISY", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Author: Imad EL BADISY [aut, cre]
 Maintainer: Imad EL BADISY <elbadisyimad@gmail.com>
-Description: Fit multilayer perceptrons for tabular classification and
-    regression using 'torch'. The package provides formula interface,
-    automatic preprocessing for numeric and categorical predictors, early
-    stopping, prediction, task-aware metrics, tuning, training-history plots,
-    and permutation importance. Neural network training is implemented with
-    the R package 'torch' by Falbel and Luraschi (2025)
-    <doi:10.32614/CRAN.package.torch>.
-URL: https://github.com/ielbadisy/mlp
-BugReports: https://github.com/ielbadisy/mlp/issues
+Description: Provides dense feed-forward multilayer perceptron models for
+    tabular regression and classification using 'torch'. The package supports
+    modern extensions around dense neural network blocks, including dropout,
+    batch normalization, residual connections, gated blocks, and optional
+    input projection.
+URL: https://github.com/ielbadisy/densemlp
+BugReports: https://github.com/ielbadisy/densemlp/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

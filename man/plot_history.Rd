@@ -7,7 +7,7 @@
 plot_history(object)
 }
 \arguments{
-\item{object}{A fitted \code{mlp_fit} object.}
+\item{object}{A fitted \code{densemlp_fit} object.}
 }
 \value{
 A ggplot object.
