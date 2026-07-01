@@ -2,16 +2,14 @@
 
 `densemlp` provides dense multilayer perceptron models for tabular
 regression and classification in R. The package is built around fully
-connected feed-forward neural network layers and supports optional
-modern extensions such as dropout, batch normalization, residual
-connections, gated blocks, and input projection.
+connected feed-forward neural network layers, with optional extensions
+such as dropout, batch normalization, residual connections, gated
+blocks, and input projection.
 
-The models implemented in `densemlp` are dense feed-forward multilayer
-perceptrons. Optional components such as dropout, batch normalization,
-residual connections, gated blocks, and input projection extend the
-basic dense multilayer perceptron architecture but do not change the
-model class into a convolutional, recurrent, transformer, or tree-based
-model.
+These extensions enrich the basic dense MLP architecture without
+changing its model class: the models remain dense feed-forward neural
+networks, not convolutional, recurrent, transformer-based, or tree-based
+models.
 
 `task` is optional in the main API. When it is set to `"auto"` or
 omitted, the task is inferred from the outcome. Use it only when you
@@ -19,13 +17,9 @@ need to override that inference.
 
 ## Why `densemlp`?
 
-The name `densemlp` reflects the core architecture used by the package:
-multilayer perceptrons built from dense, fully connected neural network
-layers. Additional options such as dropout, batch normalization,
-residual connections, gated blocks, and input projection are implemented
-around these dense blocks.
-
-Source repository: <https://github.com/ielbadisy/densemlp>
+The name `densemlp` reflects the package design: dense, fully connected
+neural network blocks for tabular data, extended with optional modern
+components when needed.
 
 Install it from GitHub with:
 
@@ -49,8 +43,8 @@ namespace.
 - Formula-based interface.
 - Automatic preprocessing for missing numeric values, missing
   categorical values, and unseen prediction-time categories.
-- Configurable hidden layers, activation, dropout, batch normalization,
-  residual blocks, gated blocks, and input projection.
+- Configurable hidden layers, activation functions, dropout, batch
+  normalization, residual blocks, gated blocks, and input projection.
 - Early stopping, learning-rate schedules, and common `torch`
   optimizers.
 - Task-aware predictions, metrics, training-history plots, tuning, and
