@@ -1,11 +1,11 @@
 Package: densemlp
-Title: Dense Multilayer Perceptrons for Tabular Classification and Regression
+Title: Dense Neural Networks for Tabular Classification and Regression
 Version: 0.5.0
 Authors@R: 
     person("Imad", "EL BADISY", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Author: Imad EL BADISY [aut, cre]
 Maintainer: Imad EL BADISY <elbadisyimad@gmail.com>
-Description: Provides dense feed-forward multilayer perceptron models for
+Description: Provides dense feed-forward neural network models for
     tabular regression and classification using 'torch'. The package supports
     modern extensions around dense neural network blocks, including dropout,
     batch normalization, residual connections, gated blocks, and optional
