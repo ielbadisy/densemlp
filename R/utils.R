@@ -10,8 +10,19 @@ abort <- function(..., call. = FALSE) {
 
 #' @keywords internal
 set_reproducible_seed <- function(seed) {
+  if (is.null(seed)) {
+    return(invisible(NULL))
+  }
+
   set.seed(seed)
-  torch::torch_manual_seed(seed)
+
+  if (requireNamespace("torch", quietly = TRUE)) {
+    if (isTRUE(torch::torch_is_installed())) {
+      torch::torch_manual_seed(seed)
+    }
+  }
+
+  invisible(NULL)
 }
 
 #' @keywords internal
