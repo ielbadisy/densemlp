@@ -1,6 +1,6 @@
 # CRAN comments
 
-This is the first CRAN submission for `densemlp`.
+This is a resubmission of `densemlp` after addressing the issues raised in the previous CRAN review.
 
 ## Package notes
 
@@ -8,6 +8,8 @@ This is the first CRAN submission for `densemlp`.
 - Unit tests are included under `tests/testthat/`.
 - A vignette is included under `vignettes/`.
 
-## Submission notes
+## Resubmission notes
 
-No additional comments for this submission.
+- Torch CUDA detection is now guarded so the package checks safely on systems without GPU support.
+- The package layout has been flattened and the package name now matches the CRAN-facing root package.
+- No additional comments for this submission.
