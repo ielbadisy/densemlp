@@ -120,11 +120,7 @@ densemlp <- function(formula = NULL,
   blueprint <- train_blueprint(x)
   processed <- apply_blueprint(blueprint, x)
 
-  resolved_device <- if (identical(device, "auto")) {
-    if (isTRUE(torch::cuda_is_available())) "cuda" else "cpu"
-  } else {
-    device
-  }
+  resolved_device <- resolve_device(device)
 
   trained <- fit_network(
     x = processed$matrix,

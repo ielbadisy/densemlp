@@ -15,6 +15,20 @@ set_reproducible_seed <- function(seed) {
 }
 
 #' @keywords internal
+torch_cuda_is_available_safe <- function() {
+  isTRUE(tryCatch(torch::cuda_is_available(), error = function(e) FALSE))
+}
+
+#' @keywords internal
+resolve_device <- function(device) {
+  if (identical(device, "auto")) {
+    if (torch_cuda_is_available_safe()) "cuda" else "cpu"
+  } else {
+    device
+  }
+}
+
+#' @keywords internal
 normalize_hidden_units <- function(hidden_units) {
   if (!is.numeric(hidden_units) || length(hidden_units) < 1L ||
       any(!is.finite(hidden_units)) || any(hidden_units < 1) ||
