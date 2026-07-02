@@ -1,4 +1,5 @@
 test_that("binary classification works end to end", {
+  skip_if_no_torch_backend()
   data <- mtcars
   data$am <- factor(data$am, labels = c("auto", "manual"))
   fit <- densemlp(am ~ mpg + wt + hp + cyl, data = data, epochs = 10, patience = 3, verbose = FALSE, seed = 1)
@@ -11,6 +12,7 @@ test_that("binary classification works end to end", {
 })
 
 test_that("verbose training prints a clean header and epoch progress", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = TRUE, seed = 1)
   )
@@ -23,6 +25,7 @@ test_that("verbose training prints a clean header and epoch progress", {
 })
 
 test_that("multiclass classification preserves levels", {
+  skip_if_no_torch_backend()
   fit <- densemlp(Species ~ ., data = iris, epochs = 10, patience = 3, verbose = FALSE, seed = 2)
   pred <- predict(fit, iris, type = "class")
   expect_true(is.factor(pred))
@@ -30,6 +33,7 @@ test_that("multiclass classification preserves levels", {
 })
 
 test_that("regression returns numeric predictions", {
+  skip_if_no_torch_backend()
   fit <- densemlp(mpg ~ disp + hp + wt, data = mtcars, task = "regression", epochs = 10, patience = 3, verbose = FALSE, seed = 3)
   pred <- predict(fit, mtcars, type = "response")
   metrics <- densemlp_metrics(mtcars$mpg, pred, task = "regression")
@@ -38,6 +42,7 @@ test_that("regression returns numeric predictions", {
 })
 
 test_that("preprocessing handles unseen categories", {
+  skip_if_no_torch_backend()
   train <- data.frame(
     y = factor(c("a", "b", "a")),
     x1 = c(1, NA, 3),
@@ -59,6 +64,7 @@ test_that("outcomes must be complete", {
 })
 
 test_that("unused outcome levels are dropped before fitting", {
+  skip_if_no_torch_backend()
   data <- iris[iris$Species != "virginica", ]
   data$Species <- factor(data$Species, levels = levels(iris$Species))
   fit <- densemlp(Species ~ ., data = data, epochs = 3, patience = 1, verbose = FALSE, seed = 7)
@@ -87,6 +93,7 @@ test_that("invalid training controls fail before fitting", {
 })
 
 test_that("permutation importance returns expected structure", {
+  skip_if_no_torch_backend()
   fit <- densemlp(Species ~ ., data = iris, epochs = 5, patience = 2, verbose = FALSE, seed = 5)
   imp <- perm_importance(fit, iris[, -5], iris$Species)
   expect_s3_class(imp, "densemlp_importance")
@@ -94,6 +101,7 @@ test_that("permutation importance returns expected structure", {
 })
 
 test_that("exported workflow used in getting started works", {
+  skip_if_no_torch_backend()
   fit <- densemlp(
     Species ~ .,
     data = iris,

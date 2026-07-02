@@ -11,9 +11,12 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
+can_use_torch <- requireNamespace("torch", quietly = TRUE) &&
+  isTRUE(torch::torch_is_installed())
+
 knitr::opts_chunk$set(
   echo = TRUE,
-  eval = TRUE,
+  eval = can_use_torch,
   collapse = TRUE,
   comment = "#>",
   fig.width = 6,
