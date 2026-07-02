@@ -10,19 +10,7 @@ abort <- function(..., call. = FALSE) {
 
 #' @keywords internal
 set_reproducible_seed <- function(seed) {
-  if (is.null(seed)) {
-    return(invisible(NULL))
-  }
-
-  set.seed(seed)
-
-  if (requireNamespace("torch", quietly = TRUE)) {
-    if (isTRUE(torch::torch_is_installed())) {
-      torch::torch_manual_seed(seed)
-    }
-  }
-
-  invisible(NULL)
+  densemlp_set_seed(seed)
 }
 
 #' @keywords internal
@@ -32,11 +20,7 @@ torch_cuda_is_available_safe <- function() {
 
 #' @keywords internal
 resolve_device <- function(device) {
-  if (identical(device, "auto")) {
-    if (torch_cuda_is_available_safe()) "cuda" else "cpu"
-  } else {
-    device
-  }
+  densemlp_get_device(device)
 }
 
 #' @keywords internal

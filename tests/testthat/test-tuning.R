@@ -1,4 +1,5 @@
 test_that("tune_densemlp returns ranked results and a fitted model", {
+  skip_if_no_torch_backend()
   tuned <- tune_densemlp(
     Species ~ .,
     data = iris,
@@ -20,6 +21,7 @@ test_that("tune_densemlp returns ranked results and a fitted model", {
 })
 
 test_that("verbose tuning prints candidate progress to the console", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     tune_densemlp(
       Species ~ .,

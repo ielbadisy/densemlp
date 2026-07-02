@@ -42,6 +42,7 @@ test_that("should_log_epoch respects the logging cadence", {
 })
 
 test_that("verbose zero stays silent", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 0, seed = 1)
   )
@@ -49,6 +50,7 @@ test_that("verbose zero stays silent", {
 })
 
 test_that("verbose one prints a header and no per-epoch learning rate", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 1, seed = 2)
   )
@@ -61,6 +63,7 @@ test_that("verbose one prints a header and no per-epoch learning rate", {
 })
 
 test_that("verbose two prints per-epoch learning rate and timing", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     densemlp(Species ~ ., data = iris, epochs = 2, patience = 1, verbose = 2, seed = 3)
   )
@@ -70,6 +73,7 @@ test_that("verbose two prints per-epoch learning rate and timing", {
 })
 
 test_that("log_every skips intermediate epochs but keeps the first and last", {
+  skip_if_no_torch_backend()
   output <- capture.output(
     densemlp(
       Species ~ .,

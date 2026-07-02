@@ -10,7 +10,6 @@ This is a resubmission of `densemlp` after addressing the issues raised in the p
 
 ## Resubmission notes
 
-- Torch CUDA detection is now guarded so the package checks safely on systems without GPU support.
-- Torch seeding now follows the same guarded pattern as `survdnn`, so it only touches the Torch backend when the backend is available and initialized.
-- The package layout has been flattened and the package name now matches the CRAN-facing root package.
+- Torch backend handling now follows the same pattern as `survdnn`: startup is silent, seed and device helpers are guarded, and Torch is only touched when the backend is available and initialized.
+- Torch-dependent tests are skipped when the backend is not installed, and the getting-started vignette does not evaluate model-training chunks without Torch.
 - No additional comments for this submission.
