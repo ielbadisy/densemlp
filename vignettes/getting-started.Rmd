@@ -55,6 +55,129 @@ data. Each hidden block is centered on a fully connected transformation,
 optionally combined with activation functions, dropout, batch normalization,
 residual connections, gated mechanisms, and input projection.
 
+## Model
+
+### Architecture
+
+Let $x \in \mathbb{R}^{p}$ be a predictor row after preprocessing. If an input
+projection of width $d_0$ is requested, it is applied first:
+
+$$
+h_0 = W_{\text{in}} x + b_{\text{in}}, \qquad W_{\text{in}} \in \mathbb{R}^{d_0 \times p}.
+$$
+
+Otherwise $h_0 = x$. Each of the $L$ hidden blocks then applies, in order,
+a linear map, batch normalization, an activation, an optional gate, and
+dropout. For block $l = 1, \dots, L$ with input $h_{l-1} \in \mathbb{R}^{d_{l-1}}$
+and output width $d_l$:
+
+$$
+z_l = W_l h_{l-1} + b_l, \qquad W_l \in \mathbb{R}^{d_l \times d_{l-1}},
+$$
+
+$$
+u_l = \mathrm{BN}(z_l) \quad \text{(identity if batch normalization is off)},
+$$
+
+$$
+a_l = \phi(u_l), \qquad \phi \in \{\mathrm{ReLU}, \tanh, \mathrm{GELU}\}.
+$$
+
+If the block is gated, $a_l$ is rescaled by a sigmoid gate computed from
+itself:
+
+$$
+g_l = \sigma(W_l^{g} a_l + b_l^{g}), \qquad a_l \leftarrow a_l \odot g_l.
+$$
+
+Dropout is then applied, $\tilde a_l = \mathrm{Dropout}(a_l)$. If the block is
+residual, the block input is added back, with a learned linear projection
+$P_l$ when $d_{l-1} \neq d_l$ and the identity otherwise:
+
+$$
+h_l = \tilde a_l + P_l(h_{l-1}), \qquad
+P_l(h_{l-1}) = \begin{cases} h_{l-1} & d_{l-1} = d_l \\ W_l^{p} h_{l-1} + b_l^{p} & d_{l-1} \neq d_l. \end{cases}
+$$
+
+After the $L$ blocks, a final linear layer maps to the output dimension
+$d_{\text{out}}$ (1 for regression and binary classification, the number of
+classes for multiclass classification):
+
+$$
+\hat y = W_{\text{out}} h_L + b_{\text{out}}.
+$$
+
+Every linear layer is initialized independently: Xavier uniform when the
+block's activation is $\tanh$, Kaiming (He) uniform otherwise (used for both
+ReLU and GELU blocks, with the ReLU gain), and all biases start at zero.
+
+### Loss functions
+
+Training minimizes a task-specific criterion over mini-batches of size $B$.
+
+Regression uses mean squared error on the raw network output $\hat y_i$:
+
+$$
+\mathcal{L}_{\text{reg}} = \frac{1}{B} \sum_{i=1}^{B} (\hat y_i - y_i)^2.
+$$
+
+Binary classification uses binary cross-entropy computed directly from the
+logit $\hat y_i$:
+
+$$
+\mathcal{L}_{\text{bin}} = -\frac{1}{B} \sum_{i=1}^{B}
+\left[ y_i \log \sigma(\hat y_i) + (1 - y_i) \log(1 - \sigma(\hat y_i)) \right].
+$$
+
+With label smoothing $\varepsilon > 0$, targets are shrunk toward $0.5$ before
+this loss is computed, $y_i \leftarrow y_i(1-\varepsilon) + 0.5\varepsilon$.
+As an alternative for imbalanced binary outcomes, focal loss reweights each
+example by $(1-p_t)^\gamma$ with class weight $\alpha$:
+
+$$
+\mathcal{L}_{\text{focal}} = -\frac{1}{B}\sum_{i=1}^{B}
+\alpha_i (1-p_{t,i})^{\gamma}
+\left[ y_i \log \sigma(\hat y_i) + (1-y_i)\log(1-\sigma(\hat y_i)) \right],
+\qquad p_{t,i} = \sigma(\hat y_i)^{y_i}(1-\sigma(\hat y_i))^{1-y_i}.
+$$
+
+Multiclass classification uses softmax cross-entropy over the $K$ output
+logits $\hat y_i \in \mathbb{R}^K$:
+
+$$
+\mathcal{L}_{\text{multi}} = -\frac{1}{B} \sum_{i=1}^{B} \log
+\frac{\exp(\hat y_{i, c_i})}{\sum_{k=1}^{K} \exp(\hat y_{i,k})}, \qquad c_i \text{ the true class of example } i,
+$$
+
+with the same label-smoothing option applied to the target distribution when
+requested.
+
+### Optimization
+
+Parameters are updated with Adam or SGD with momentum $0.9$, both supporting
+an $L_2$ weight decay $\lambda$ applied to the parameter vector $\theta$:
+
+$$
+\theta \leftarrow \theta - \eta \left( \widehat{\nabla_\theta \mathcal{L}} + \lambda \theta \right),
+$$
+
+where $\eta$ is the learning rate and $\widehat{\nabla_\theta \mathcal{L}}$ is
+the Adam or SGD update direction computed from the mini-batch gradient.
+Gradients are clipped to a maximum global norm of 5 before each step. The
+learning rate itself can follow a fixed schedule: none, cosine annealing over
+the training horizon,
+
+$$
+\eta_t = \eta_{\min} + \tfrac{1}{2}(\eta_0 - \eta_{\min})\left(1 + \cos\left(\tfrac{t}{T_{\max}}\pi\right)\right),
+$$
+
+or a step decay that halves $\eta$ every $\max(5, \lfloor \text{epochs}/3 \rfloor)$
+epochs. Training holds out a validation fraction of the data and stops early
+once the validation loss fails to improve by at least `min_delta` for
+`patience` consecutive epochs (after `min_epochs` epochs have elapsed); the
+model weights from the best validation epoch are restored at the end of
+training.
+
 ## Classification
 
 For classification, use a factor outcome. The task is inferred from the
