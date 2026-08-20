@@ -10,7 +10,7 @@ Description: Provides dense feed-forward neural network models for
     modern extensions around dense neural network blocks, including dropout,
     batch normalization, residual connections, gated blocks, and optional
     input projection.
-URL: https://github.com/ielbadisy/densemlp, https://CRAN.R-project.org/package=densemlp
+URL: https://CRAN.R-project.org/package=densemlp
 BugReports: https://github.com/ielbadisy/densemlp/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
