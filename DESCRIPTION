@@ -1,6 +1,6 @@
 Package: densemlp
 Title: Dense Neural Networks for Tabular Classification and Regression
-Version: 0.5.0
+Version: 0.6.0
 Authors@R: 
     person("Imad", "El Badisy", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Author: Imad El Badisy [aut, cre]

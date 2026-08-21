@@ -180,6 +180,34 @@ tuned$best_fit
     ## Encoded features: 4
     ## Best epoch: 8
 
+## Cross-validation
+
+``` r
+cv <- cv_densemlp(
+  Species ~ ., data = iris, folds = 3,
+  hidden_units = c(16, 8), epochs = 15, patience = 3, seed = 1
+)
+cv
+```
+
+    ## densemlp cross-validation (3 folds, task: classification)
+    ##
+    ## Per-fold metrics:
+    ##  fold accuracy  log_loss
+    ##     1     0.56 0.8360283
+    ##     2     0.88 0.5734844
+    ##     3     0.76 0.5182577
+    ##
+    ## Summary:
+    ##    metric      mean        sd
+    ##  accuracy 0.7333333 0.1616581
+    ##  log_loss 0.6425901 0.1697829
+
+`cv_densemlp()` follows the same formula/x-y interface and task-aware
+metrics as `densemlp()`, fitting on each training fold and scoring the
+held-out fold with `densemlp_metrics()`. Regression tasks report
+`rmse`/`mae`/`rsq`; binary classification adds `brier`.
+
 ## Interpretation
 
 ``` r

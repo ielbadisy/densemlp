@@ -1,15 +1,26 @@
-# CRAN comments
+# CRAN comments: densemlp 0.6.0
 
-This is a resubmission of `densemlp` after addressing the issues raised in the previous CRAN review.
+This is an update from the CRAN-published 0.5.0 to 0.6.0.
 
-## Package notes
+## Submission notes
 
-- The package provides a formula interface for dense multilayer perceptrons on tabular data.
-- Unit tests are included under `tests/testthat/`.
-- A vignette is included under `vignettes/`.
+* Added `cv_densemlp()`: k-fold cross-validation, following the same
+  formula/x-y interface and task-aware defaults as `densemlp()`/
+  `tune_densemlp()`.
+* The maintainer's family-name casing in `Authors@R` changed from
+  "EL BADISY" to "El Badisy" (title case); same person, same email
+  address, no change in maintainership.
 
-## Resubmission notes
+## R CMD check results
 
-- Torch backend handling now follows the same pattern as `survdnn`: startup is silent, seed and device helpers are guarded, and Torch is only touched when the backend is available and initialized.
-- Torch-dependent tests are skipped when the backend is not installed, and the getting-started vignette does not evaluate model-training chunks without Torch.
-- No additional comments for this submission.
+0 errors | 0 warnings | 2 notes
+
+* "unable to verify current time" - a local clock-check note unrelated to
+  the package.
+* "New maintainer" - the Maintainer field's family-name casing changed
+  from "EL BADISY" to "El Badisy" (title case); same person, same email
+  address, no change in maintainership.
+
+## Test environments
+
+* Local: Ubuntu 24.04, R 4.5.1

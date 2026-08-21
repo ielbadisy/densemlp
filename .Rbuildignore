@@ -6,3 +6,5 @@
 ^\.Rproj\.user$
 ^ARCHIVED$
 ^.*\.tar\.gz$
+^\.claude$
+^\.github$
