@@ -1,15 +1,21 @@
 Package: densemlp
-Title: Dense Neural Networks for Tabular Classification and Regression
-Version: 0.6.0
-Authors@R: 
+Title: Dense Neural Networks for Tabular Regression, Classification and Survival
+Version: 0.7.0
+Authors@R:
     person("Imad", "El Badisy", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
-Author: Imad El Badisy [aut, cre]
-Maintainer: Imad El Badisy <elbadisyimad@gmail.com>
-Description: Provides dense feed-forward neural network models for
-    tabular regression and classification using 'torch'. The package supports
-    modern extensions around dense neural network blocks, including dropout,
-    batch normalization, residual connections, gated blocks, and optional
-    input projection.
+Description: Dense feed-forward neural networks (multilayer perceptrons)
+    for tabular regression, classification and survival analysis, with a
+    formula or x/y interface. Supports residual and gated hidden blocks,
+    batch normalization, per-layer dropout, learned cross-feature
+    interactions, exponential moving-average weights, learning-rate
+    schedules, internal bootstrap ensembles and Adam optimization. Survival
+    outcomes are trained with either a batch-wise Breslow-tie Cox partial
+    likelihood or a discrete-time inverse-probability-of-censoring-weighted
+    integrated Brier score. The numerical kernels are implemented natively
+    in C++ via 'RcppArmadillo', with no external deep learning framework
+    dependency (no 'torch' / 'libtorch'). Companion helpers provide k-fold
+    cross-validation, hyperparameter search and task-aware evaluation
+    metrics.
 URL: https://CRAN.R-project.org/package=densemlp
 BugReports: https://github.com/ielbadisy/densemlp/issues
 License: MIT + file LICENSE
@@ -17,12 +23,18 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
-    ggplot2,
+    graphics,
+    parallel,
+    Rcpp,
     stats,
-    torch
+    utils
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
 Suggests:
     knitr,
     rmarkdown,
+    survival,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

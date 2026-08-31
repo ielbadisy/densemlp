@@ -3,19 +3,9 @@
 \docType{package}
 \name{densemlp-package}
 \alias{densemlp-package}
-\title{densemlp: Dense Multilayer Perceptrons for Tabular Data}
+\title{densemlp: Dense Neural Networks for Tabular Regression, Classification and Survival}
 \description{
-Provides dense feed-forward multilayer perceptron models for tabular
-regression and classification. Models are built from fully connected
-neural network layers, with optional dropout, batch normalization,
-residual connections, gated blocks, and input projection.
-}
-\details{
-The models implemented in \code{densemlp} are dense feed-forward multilayer
-perceptrons. Optional components such as dropout, batch normalization,
-residual connections, gated blocks, and input projection extend the basic
-dense multilayer perceptron architecture but do not change the model class into a
-convolutional, recurrent, transformer, or tree-based model.
+Dense feed-forward neural networks (multilayer perceptrons) for tabular regression, classification and survival analysis, with a formula or x/y interface. Supports residual and gated hidden blocks, batch normalization, per-layer dropout, learned cross-feature interactions, exponential moving-average weights, learning-rate schedules, internal bootstrap ensembles and Adam optimization. Survival outcomes are trained with either a batch-wise Breslow-tie Cox partial likelihood or a discrete-time inverse-probability-of-censoring-weighted integrated Brier score. The numerical kernels are implemented natively in C++ via 'RcppArmadillo', with no external deep learning framework dependency (no 'torch' / 'libtorch'). Companion helpers provide k-fold cross-validation, hyperparameter search and task-aware evaluation metrics.
 }
 \seealso{
 Useful links:

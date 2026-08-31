@@ -2,48 +2,52 @@
 % Please edit documentation in R/cv.R
 \name{cv_densemlp}
 \alias{cv_densemlp}
-\title{Cross-validate a dense multilayer perceptron}
+\title{Cross-validate a densemlp model}
 \usage{
 cv_densemlp(
-  formula = NULL,
-  data = NULL,
-  x = NULL,
-  y = NULL,
-  task = c("auto", "classification", "regression"),
-  folds = 5,
-  seed = 1,
+  x,
+  y,
+  task = c("auto", "regression", "binary", "multiclass", "survival"),
+  folds = 5L,
+  seed = 1L,
+  ncores = 1L,
   verbose = FALSE,
   ...
 )
 }
 \arguments{
-\item{formula}{A formula specification.}
-
-\item{data}{A data frame used with \code{formula}.}
-
-\item{x}{Predictor data frame or matrix.}
+\item{x}{Predictor data.frame or matrix.}
 
 \item{y}{Outcome vector.}
 
-\item{task}{Optional task override. \code{"auto"} infers the task from the
-outcome.}
+\item{task}{\code{"auto"} infers the task from \code{y}, as in \code{\link[=densemlp]{densemlp()}}. Pass
+\code{"survival"} explicitly for a survival outcome.}
 
 \item{folds}{Number of cross-validation folds.}
 
-\item{seed}{Random seed for fold assignment and model fitting.}
+\item{seed}{Random seed for fold assignment; fold \code{k} fits with
+\code{seed = seed + k}.}
+
+\item{ncores}{Number of cores used to fit folds in parallel (see
+\code{\link[=densemlp]{densemlp()}}'s \code{ncores}).}
 
 \item{verbose}{Print per-fold progress.}
 
-\item{...}{Additional arguments passed to \code{densemlp()} for every fold
-(e.g. \code{hidden_units}, \code{epochs}, \code{lr}).}
+\item{...}{Additional arguments passed to \code{\link[=densemlp]{densemlp()}} for every fold (e.g.
+\code{hidden_units}, \code{epochs}, \code{lr}).}
 }
 \value{
-A list of class \code{densemlp_cv} with \code{fold_metrics} (a data frame,
-one row per fold), \code{summary} (mean and SD per metric across folds), and
-\code{task}.
+A list of class \code{densemlp_cv} with \code{fold_metrics} (one row per fold),
+\code{summary} (mean and SD per metric across folds), and \code{task}.
 }
 \description{
-Fits \code{densemlp()} on each of \code{folds} training splits and evaluates it on
-the held-out fold via \code{densemlp_metrics()}, using the same task-aware
-defaults as \code{densemlp()}/\code{tune_densemlp()}.
+Fits \code{\link[=densemlp]{densemlp()}} on each of \code{folds} training splits and evaluates it on the
+held-out fold via \code{\link[=densemlp_metrics]{densemlp_metrics()}}.
+}
+\examples{
+set.seed(1)
+x <- data.frame(a = rnorm(60), b = rnorm(60))
+y <- x$a - 0.5 * x$b + rnorm(60, sd = 0.1)
+cv <- cv_densemlp(x, y, folds = 3, epochs = 20, hidden_units = c(8))
+cv$summary
 }

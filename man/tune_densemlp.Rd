@@ -2,69 +2,67 @@
 % Please edit documentation in R/tuning.R
 \name{tune_densemlp}
 \alias{tune_densemlp}
-\title{Tune a dense multilayer perceptron over a task-aware hyperparameter grid}
+\title{Tune a densemlp model over a hyperparameter grid}
 \usage{
 tune_densemlp(
-  formula = NULL,
-  data = NULL,
-  x = NULL,
-  y = NULL,
-  task = c("auto", "classification", "regression"),
+  x,
+  y,
+  task = c("auto", "regression", "binary", "multiclass", "survival"),
   grid = NULL,
-  metric = NULL,
   validation = 0.2,
-  early_stopping = TRUE,
-  patience = 10,
-  min_delta = 0,
-  min_epochs = NULL,
-  seed = 1,
-  repeats = 3,
+  seed = 1L,
+  repeats = 3L,
+  ncores = 1L,
   verbose = FALSE,
-  device = c("auto", "cpu", "cuda"),
   refit = TRUE
 )
 }
 \arguments{
-\item{formula}{A formula specification.}
-
-\item{data}{A data frame used with \code{formula}.}
-
-\item{x}{Predictor data frame or matrix.}
+\item{x}{Predictor data.frame or matrix.}
 
 \item{y}{Outcome vector.}
 
-\item{task}{Optional task override. \code{"auto"} infers the task from the
-outcome.}
+\item{task}{\code{"auto"} infers the task from \code{y}, as in \code{\link[=densemlp]{densemlp()}}.}
 
-\item{grid}{A named list of candidate values.}
+\item{grid}{A named list of candidate values. Supported names:
+\code{hidden_units} (a list of integer vectors), \code{dropout} (a list of
+numeric vectors, recycled to \code{hidden_units} length), \code{residual},
+\code{gated}, \code{ema_decay}, \code{lr_schedule}, \code{epochs}, \code{batch_size}, \code{lr}.
+Any name omitted falls back to a single-value default. \code{interaction}
+is intentionally not tunable here: it is numerically unstable on
+small/wide data (see package NEWS) and is left at \code{FALSE}.}
 
-\item{metric}{Optional ranking metric. Use \code{"accuracy"} for classification
-and \code{"rmse"} or \code{"valid_loss"} for regression.}
-
-\item{validation}{Validation fraction for each fit.}
-
-\item{early_stopping}{Enable early stopping during tuning.}
-
-\item{patience}{Early stopping patience.}
-
-\item{min_delta}{Minimum validation loss improvement.}
-
-\item{min_epochs}{Minimum number of epochs before early stopping can trigger.}
+\item{validation}{Validation fraction used for every candidate fit.}
 
 \item{seed}{Base random seed.}
 
 \item{repeats}{Number of repeated seeds per candidate.}
 
-\item{verbose}{Print per-candidate progress.}
+\item{ncores}{Number of cores used to fit candidates in parallel (see
+\code{\link[=densemlp]{densemlp()}}'s \code{ncores}).}
 
-\item{device}{Device to use.}
+\item{verbose}{Print per-candidate progress.}
 
 \item{refit}{Refit the best configuration on the supplied data.}
 }
 \value{
-A list with ranked tuning results and, when \code{refit = TRUE}, the best
-fitted model.
+A list of class \code{densemlp_tuned} with \code{results} (one row per
+candidate, ranked best first by mean validation loss), \code{best_config},
+and, when \code{refit = TRUE}, \code{best_fit}.
 }
 \description{
-Tune a dense multilayer perceptron over a task-aware hyperparameter grid
+Fits \code{\link[=densemlp]{densemlp()}} for every combination in \code{grid} (each repeated \code{repeats}
+times with successive seeds), ranks candidates by their best internal
+validation loss, and optionally refits the best configuration on the
+full data.
+}
+\examples{
+set.seed(1)
+x <- data.frame(a = rnorm(80), b = rnorm(80))
+y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
+tuned <- tune_densemlp(
+  x, y, repeats = 1,
+  grid = list(hidden_units = list(c(8), c(16, 8)), epochs = c(20))
+)
+tuned$best_config
 }

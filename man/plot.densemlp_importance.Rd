@@ -4,15 +4,17 @@
 \alias{plot.densemlp_importance}
 \title{Plot permutation importance}
 \usage{
-\method{plot}{densemlp_importance}(x, ...)
+\method{plot}{densemlp_importance}(x, top = 20L, ...)
 }
 \arguments{
 \item{x}{A \code{densemlp_importance} object.}
 
-\item{...}{Unused.}
+\item{top}{Number of top features to show.}
+
+\item{...}{Passed to \code{\link[graphics:barplot]{graphics::barplot()}}.}
 }
 \value{
-A ggplot object.
+\code{x}, invisibly.
 }
 \description{
 Plot permutation importance
