@@ -2,16 +2,26 @@
 % Please edit documentation in R/plots.R
 \name{plot_history}
 \alias{plot_history}
-\title{Plot training history}
+\title{Plot the training history of a fitted densemlp model}
 \usage{
-plot_history(object)
+plot_history(object, ...)
 }
 \arguments{
-\item{object}{A fitted \code{densemlp_fit} object.}
+\item{object}{A fitted \code{densemlp} object (single model).}
+
+\item{...}{Passed to \code{\link[graphics:matplot]{graphics::matplot()}}.}
 }
 \value{
-A ggplot object.
+\code{object}, invisibly.
 }
 \description{
-Plot training history
+A named wrapper around the \code{\link[=plot.densemlp]{plot.densemlp()}} method: draws the per-epoch
+training and validation loss curves.
+}
+\examples{
+set.seed(1)
+x <- data.frame(a = rnorm(80), b = rnorm(80))
+y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
+fit <- densemlp(x, y, epochs = 40, hidden_units = c(16))
+plot_history(fit)
 }

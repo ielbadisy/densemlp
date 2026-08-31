@@ -1,45 +1,19 @@
-test_that("tune_densemlp returns ranked results and a fitted model", {
-  skip_if_no_torch_backend()
+test_that("tune_densemlp ranks candidates and refits the best one", {
+  set.seed(1)
+  x <- data.frame(a = rnorm(80), b = rnorm(80))
+  y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
   tuned <- tune_densemlp(
-    Species ~ .,
-    data = iris,
-    grid = list(
-      hidden_units = list(c(8), c(16, 8)),
-      activation = c("relu"),
-      dropout = c(0),
-      batch_size = c(8),
-      lr = c(1e-3),
-      epochs = c(10)
-    ),
-    patience = 3,
-    seed = 11
+    x, y, repeats = 1, validation = 0.2,
+    grid = list(hidden_units = list(c(8), c(16, 8)), epochs = c(15))
   )
-
-  expect_true(is.data.frame(tuned$results))
-  expect_s3_class(tuned$best_fit, "densemlp_fit")
-  expect_gte(nrow(tuned$results), 2)
+  expect_s3_class(tuned, "densemlp_tuned")
+  expect_equal(nrow(tuned$results), 2)
+  expect_true(all(diff(tuned$results$score) >= 0))
+  expect_s3_class(tuned$best_fit, "densemlp")
 })
 
-test_that("verbose tuning prints candidate progress to the console", {
-  skip_if_no_torch_backend()
-  output <- capture.output(
-    tune_densemlp(
-      Species ~ .,
-      data = iris,
-      grid = list(
-        hidden_units = list(c(8)),
-        activation = c("relu"),
-        dropout = c(0),
-        batch_size = c(8),
-        lr = c(1e-3),
-        epochs = c(2)
-      ),
-      patience = 1,
-      repeats = 1,
-      seed = 12,
-      verbose = TRUE
-    )
-  )
-
-  expect_true(any(grepl("^Candidate 1/", output)))
+test_that("tune_densemlp rejects unsupported grid names", {
+  x <- data.frame(a = rnorm(20))
+  y <- rnorm(20)
+  expect_error(tune_densemlp(x, y, grid = list(activation = "relu")), "Unsupported")
 })

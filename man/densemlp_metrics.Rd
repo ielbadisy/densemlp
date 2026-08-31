@@ -2,24 +2,28 @@
 % Please edit documentation in R/metrics.R
 \name{densemlp_metrics}
 \alias{densemlp_metrics}
-\title{Compute densemlp metrics}
+\title{Prediction metrics for a fitted densemlp model}
 \usage{
-densemlp_metrics(truth, estimate, task = NULL, prob = NULL)
+densemlp_metrics(truth, estimate, task, prob = NULL)
 }
 \arguments{
-\item{truth}{Ground truth values.}
+\item{truth}{Observed outcome values, or, for \code{task = "survival"}, a
+\code{survival::Surv()} object or a two-column \verb{(time, event)}
+matrix/data.frame.}
 
-\item{estimate}{Predicted classes for classification or numeric predictions
-for regression.}
+\item{estimate}{Predicted values (\code{type = "response"} for regression and
+survival, \code{type = "class"} for classification).}
 
-\item{task}{Optional task override. When \code{NULL}, the task is inferred from
-\code{truth} and \code{estimate}.}
+\item{task}{\code{"regression"}, \code{"binary"}, \code{"multiclass"}, or \code{"survival"}.}
 
-\item{prob}{Optional class probabilities.}
+\item{prob}{Optional matrix of class probabilities (classification only),
+used to compute \code{macro_auc} and \code{log_loss}.}
 }
 \value{
-A named list of metrics.
+A named list of metrics: \code{rmse}, \code{nrmse}, \code{rsq} for regression,
+\code{accuracy}, \code{balanced_accuracy}, \code{macro_auc}, \code{log_loss} for
+classification, or \code{concordance} (Harrell's C-index) for survival.
 }
 \description{
-Compute densemlp metrics
+Prediction metrics for a fitted densemlp model
 }

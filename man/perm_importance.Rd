@@ -2,25 +2,48 @@
 % Please edit documentation in R/importance.R
 \name{perm_importance}
 \alias{perm_importance}
-\title{Permutation variable importance}
+\alias{print.densemlp_importance}
+\title{Permutation variable importance for a fitted densemlp model}
 \usage{
 perm_importance(object, new_data, truth, metric = NULL, seed = object$seed)
+
+\method{print}{densemlp_importance}(x, ...)
 }
 \arguments{
-\item{object}{A fitted \code{densemlp_fit} object.}
+\item{object}{A fitted \code{densemlp} object (single model; ensembles are not
+supported).}
 
-\item{new_data}{Evaluation data frame.}
+\item{new_data}{Evaluation predictor data.}
 
-\item{truth}{Ground truth outcome values.}
+\item{truth}{Ground-truth outcome for \code{new_data}: a numeric vector
+(regression), a factor/character (classification), or a
+\code{survival::Surv()} / two-column \verb{(time, event)} object (survival).}
 
-\item{metric}{Metric name. Defaults to accuracy for classification and RMSE
-for regression.}
+\item{metric}{Metric name understood by \code{\link[=densemlp_metrics]{densemlp_metrics()}}. Defaults to
+\code{"rmse"} (regression), \code{"accuracy"} (classification) or \code{"concordance"}
+(survival).}
 
-\item{seed}{Random seed used for shuffling.}
+\item{seed}{Random seed used for the column shuffles.}
+
+\item{x}{A \code{densemlp_importance} object.}
+
+\item{...}{Unused.}
 }
 \value{
-A \code{densemlp_importance} object.
+A \code{densemlp_importance} object: a list with \code{data} (a data frame
+of \code{feature} / \code{importance}, ordered by decreasing importance),
+\code{metric}, \code{baseline} and \code{task}.
 }
 \description{
-Permutation variable importance
+Model-agnostic permutation importance: for each predictor, the column is
+randomly shuffled and the drop in predictive performance (relative to the
+unpermuted baseline) is recorded. Larger values mean the model relied more
+on that predictor.
+}
+\examples{
+set.seed(1)
+x <- data.frame(a = rnorm(120), b = rnorm(120), c = rnorm(120))
+y <- x$a - 0.5 * x$b + rnorm(120, sd = 0.1)
+fit <- densemlp(x, y, epochs = 40, hidden_units = c(16))
+perm_importance(fit, x, y)
 }
