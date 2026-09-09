@@ -87,3 +87,9 @@ densemlp_metrics(sy, predict(sfit, sx, type = "response"), task = "survival")
 * `plot_history()` / `plot()` - training and validation loss curves.
 
 See `?densemlp` and `vignette("densemlp-intro")` for the full API.
+
+## Citation
+
+```{r citation}
+citation("densemlp")
+```

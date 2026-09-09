@@ -91,3 +91,24 @@ densemlp_metrics(sy, predict(sfit, sx, type = "response"), task = "survival")
 - `plot_history()` / `plot()` - training and validation loss curves.
 
 See `?densemlp` and `vignette("densemlp-intro")` for the full API.
+
+## Citation
+
+``` r
+citation("densemlp")
+#> To cite densemlp in publications, use:
+#> 
+#>   El Badisy I (2026). _densemlp: Dense Neural Networks for Tabular
+#>   Regression, Classification and Survival_. R package version 0.7.1,
+#>   <https://CRAN.R-project.org/package=densemlp>.
+#> 
+#> A BibTeX entry for LaTeX users is
+#> 
+#>   @Manual{,
+#>     title = {densemlp: Dense Neural Networks for Tabular Regression, Classification and Survival},
+#>     author = {Imad {El Badisy}},
+#>     year = {2026},
+#>     note = {R package version 0.7.1},
+#>     url = {https://CRAN.R-project.org/package=densemlp},
+#>   }
+```

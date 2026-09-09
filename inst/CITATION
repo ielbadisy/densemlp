@@ -1,0 +1,10 @@
+citHeader("To cite densemlp in publications, use:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "densemlp: Dense Neural Networks for Tabular Regression, Classification and Survival",
+  author  = person("Imad", "El Badisy"),
+  year    = "2026",
+  note    = sprintf("R package version %s", meta$Version),
+  url     = "https://CRAN.R-project.org/package=densemlp"
+)
