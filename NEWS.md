@@ -1,3 +1,11 @@
+# densemlp 0.7.1
+
+* Add `src/Makevars` / `src/Makevars.win` linking the numerical kernels
+  against R's BLAS/LAPACK (`$(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)`).
+  Without the explicit link line the Armadillo calls (`dgemm_`, `dgemv_`,
+  `ddot_`, `dsyrk_`, ...) were left undefined at link time on the CRAN
+  Windows builder. No user-visible changes.
+
 # densemlp 0.7.0
 
 ## Backend rewrite

@@ -1,6 +1,6 @@
 Package: densemlp
 Title: Dense Neural Networks for Tabular Regression, Classification and Survival
-Version: 0.7.0
+Version: 0.7.1
 Authors@R:
     person("Imad", "El Badisy", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Description: Dense feed-forward neural networks (multilayer perceptrons)
