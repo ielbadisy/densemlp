@@ -1,5 +1,7 @@
 # densemlp
 
+[![CRAN status](https://www.r-pkg.org/badges/version/densemlp)](https://CRAN.R-project.org/package=densemlp)
+
 `densemlp` provides dense feed-forward neural network models (multilayer
 perceptrons) for tabular **regression**, **classification** and
 **survival analysis** in R. Forward propagation, backpropagation and
