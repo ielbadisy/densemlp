@@ -8,13 +8,16 @@
 #' @param x Predictor data.frame or matrix (`x`/`y` interface).
 #' @param y Outcome (`x`/`y` interface): numeric for regression, a
 #'   factor/character (2 levels for binary, 3+ for multiclass) for
-#'   classification, or, for `task = "survival"`, a [survival::Surv()]
+#'   classification, numeric proportions in `[0, 1]` for `task = "binary"`
+#'   (a fractional / quasi-binomial outcome), non-negative counts for
+#'   `task = "count"`, or, for `task = "survival"`, a [survival::Surv()]
 #'   object or a two-column matrix/data.frame giving `(time, event)`
 #'   (`event` coded `1` = event, `0` = censored).
 #' @param task `"auto"` infers the task from `y` (a [survival::Surv()]
 #'   response, from either interface, is always detected as `"survival"`);
 #'   otherwise one of `"regression"`, `"binary"`, `"multiclass"`,
-#'   `"survival"`.
+#'   `"survival"`, `"count"` (Poisson log-likelihood with a log link; never
+#'   inferred, so it must be requested).
 #' @param loss For `task = "survival"` only: `"cox"` (batch-wise Breslow-tie
 #'   Cox partial likelihood, a single linear risk score) or `"brier"`
 #'   (IPCW integrated Brier score over a discrete-time grid of `n_bins`
@@ -22,7 +25,9 @@
 #' @param n_bins For `task = "survival", loss = "brier"` only: number of
 #'   discrete-time bins (quantile cutpoints of the observed follow-up
 #'   times).
-#' @param hidden_units Integer vector of hidden layer sizes.
+#' @param hidden_units Integer vector of hidden layer sizes. An empty vector
+#'   (`integer(0)`) gives a linear model (a GLM fitted by stochastic
+#'   gradient descent).
 #' @param epochs Maximum number of training epochs (an upper bound when
 #'   `early_stopping` is used).
 #' @param batch_size Mini-batch size.
@@ -53,9 +58,11 @@
 #' @param lr_schedule Learning-rate schedule: `"none"`, cosine annealing over
 #'   `epochs`, or `"step"` decay by 0.5 every `max(5, floor(epochs / 3))`
 #'   epochs.
-#' @param validation Validation fraction held out for early stopping.
-#'   Set to `0` to disable (trains for the full `epochs`, no BN running-stat
-#'   evaluation set).
+#' @param validation Validation fraction in `[0, 1)` held out for early
+#'   stopping, or an integer vector of at least two row indices to hold out
+#'   (for example a split by cluster or by time). Set to `0` to disable (trains for the full
+#'   `epochs`, no BN running-stat evaluation set). Row indices cannot be
+#'   combined with `ensemble > 1`.
 #' @param early_stopping Logical; stop once validation loss stops improving.
 #'   Ignored if `validation = 0`.
 #' @param patience Number of non-improving epochs to wait before stopping.
@@ -73,6 +80,22 @@
 #'   the first positional argument -- `densemlp(y ~ ., df)`,
 #'   `densemlp(formula = y ~ ., data = df)` and `densemlp(x, y)` all work.
 #' @param data A data.frame used with `formula`.
+#' @param offset Optional fixed term added to the linear predictor (the
+#'   output before its activation), on the scale of the outcome for
+#'   regression and of the link otherwise (log for `"count"`, logit for
+#'   `"binary"`). A numeric vector with one value per row, or for
+#'   `"multiclass"` a matrix with one column per class. Not available for
+#'   `task = "survival"`.
+#' @param groups Optional grouping factor(s): a vector, or a list or
+#'   data.frame of vectors, each with one value per row. Every level of
+#'   every grouping factor gets its own learned intercept on the linear
+#'   predictor (one per class for multiclass), trained jointly with the
+#'   network. This gives fixed-effect style cluster or period intercepts,
+#'   as in panel data. Not available for `task = "survival"`.
+#' @param group_penalty Non-negative ridge penalty on the group intercepts,
+#'   added to each mini-batch loss as `group_penalty` times the mean squared
+#'   intercept of each grouping factor. Either one value for all grouping
+#'   factors or one value per factor. `0` (default) leaves them unpenalized.
 #'
 #' @details
 #' Hidden layers are `Linear -> BatchNorm -> ReLU -> optional gate -> optional
@@ -91,13 +114,20 @@
 #' transparently. The output layer is plain
 #' `Linear -> task activation` (no BN): linear (regression, MSE loss),
 #' sigmoid (binary, binary cross-entropy), softmax (multiclass, categorical
-#' cross-entropy), or a linear risk score (survival, Cox partial
-#' likelihood); the first three share the output-gradient simplification
+#' cross-entropy), exponential (count, Poisson log-likelihood), or a linear
+#' risk score (survival, Cox partial likelihood); the first four share the
+#' output-gradient simplification
 #' `dZ = (yhat - y) / n`, while survival uses its own closed-form Cox
 #' gradient (see the "Survival" section below). With `validation > 0` and
 #' `early_stopping = TRUE` (both on by default), the parameters (weights,
 #' biases, and BN affine/running-stat parameters) from the best validation
 #' epoch are restored at the end.
+#'
+#' `offset` and `groups` both enter the linear predictor additively, after
+#' the output layer and before its activation, so the fitted model is
+#' `g(E[y]) = f(x) + offset + sum_k alpha_k[group_k]`, where `f` is the
+#' network and the `alpha_k` are the per-level intercepts (see
+#' [group_effects()]).
 #'
 #' @section Survival:
 #' `task = "survival"` supports two losses, both trained batch-wise against
@@ -145,7 +175,7 @@
 #' predict(fit, x[1:5, ])
 #' @export
 densemlp <- function(x = NULL, y = NULL,
-                     task = c("auto", "regression", "binary", "multiclass", "survival"),
+                     task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                      loss = c("cox", "brier"), n_bins = 10L,
                      hidden_units = c(32, 16), epochs = 100L, batch_size = 32L,
                      lr = 1e-3, validation = 0.2, early_stopping = TRUE,
@@ -156,7 +186,8 @@ densemlp <- function(x = NULL, y = NULL,
                      ensemble = 1L, ensemble_bootstrap = TRUE,
                      lr_schedule = c("none", "cosine", "step"),
                      seed = 1L, verbose = FALSE, ncores = 1L,
-                     formula = NULL, data = NULL) {
+                     formula = NULL, data = NULL,
+                     offset = NULL, groups = NULL, group_penalty = 0) {
   task <- match.arg(task)
   loss <- match.arg(loss)
   lr_schedule <- match.arg(lr_schedule)
@@ -206,10 +237,10 @@ densemlp <- function(x = NULL, y = NULL,
       task <- if (nlev <= 2L) "binary" else "multiclass"
     }
   }
-  if (!is.numeric(hidden_units) || length(hidden_units) < 1L ||
+  if (!is.numeric(hidden_units) ||
       any(!is.finite(hidden_units)) || any(hidden_units < 1) ||
       any(hidden_units != as.integer(hidden_units))) {
-    stop("`hidden_units` must contain positive integers.", call. = FALSE)
+    stop("`hidden_units` must contain positive integers (or be empty for a linear model).", call. = FALSE)
   }
   if (length(epochs) != 1L || !is.finite(epochs) || epochs < 1 || epochs != as.integer(epochs)) {
     stop("`epochs` must be a positive integer.", call. = FALSE)
@@ -221,14 +252,36 @@ densemlp <- function(x = NULL, y = NULL,
   if (length(lr) != 1L || !is.finite(lr) || lr <= 0) {
     stop("`lr` must be a positive number.", call. = FALSE)
   }
-  if (length(validation) != 1L || !is.finite(validation) || validation < 0 || validation >= 1) {
-    stop("`validation` must be in [0, 1).", call. = FALSE)
+  valid_rows <- integer()
+  if (length(validation) > 1L) {
+    if (any(!is.finite(validation)) || any(validation != as.integer(validation)) ||
+        any(validation < 1) || any(validation > NROW(y)) || anyDuplicated(validation)) {
+      stop("Row-index `validation` must be distinct row numbers of the training data.", call. = FALSE)
+    }
+    if (length(validation) >= NROW(y)) stop("Row-index `validation` leaves no training rows.", call. = FALSE)
+    if (ensemble > 1L) stop("Row-index `validation` cannot be combined with `ensemble > 1`.", call. = FALSE)
+    valid_rows <- as.integer(validation)
+    validation <- length(valid_rows) / NROW(y)
+  } else if (length(validation) != 1L || !is.finite(validation) || validation < 0 || validation >= 1) {
+    stop("`validation` must be a fraction in [0, 1) or a vector of row indices.", call. = FALSE)
+  }
+  if (!is.numeric(group_penalty) || length(group_penalty) < 1L ||
+      any(!is.finite(group_penalty)) || any(group_penalty < 0)) {
+    stop("`group_penalty` must contain non-negative numbers.", call. = FALSE)
+  }
+  if (identical(task, "survival") && (!is.null(offset) || !is.null(groups))) {
+    stop("`offset` and `groups` are not available for `task = \"survival\"`.", call. = FALSE)
+  }
+  groups <- densemlp_as_groups(groups, NROW(y))
+  if (length(group_penalty) != 1L && length(group_penalty) != length(groups)) {
+    stop("`group_penalty` must have length 1 or one value per grouping factor.", call. = FALSE)
   }
   if (!is.numeric(dropout) || length(dropout) < 1L || any(!is.finite(dropout)) ||
       any(dropout < 0) || any(dropout >= 1)) {
     stop("`dropout` must contain values in [0, 1).", call. = FALSE)
   }
   if (length(dropout) == 1L) dropout <- rep(dropout, length(hidden_units))
+  if (length(hidden_units) == 0L) dropout <- numeric()
   if (length(dropout) != length(hidden_units)) {
     stop("`dropout` must have length 1 or match `hidden_units`.", call. = FALSE)
   }
@@ -261,7 +314,7 @@ densemlp <- function(x = NULL, y = NULL,
     x_members[] <- lapply(x_members, function(column) {
       if (is.character(column)) factor(column) else column
     })
-    outcome_levels <- if (task %in% c("regression", "survival")) NULL else unique(as.character(y))
+    outcome_levels <- if (task %in% c("regression", "survival", "count") || is.numeric(y)) NULL else unique(as.character(y))
     member_index <- vector("list", ensemble)
     for (member in seq_len(ensemble)) {
       member_seed <- as.integer(seed) + member - 1L
@@ -284,6 +337,9 @@ densemlp <- function(x = NULL, y = NULL,
       index <- member_index[[member]]
       densemlp(
         x = x_members[index, , drop = FALSE], y = densemlp_index_outcome(y, index), task = task,
+        offset = if (is.null(offset)) NULL else as.matrix(offset)[index, , drop = FALSE],
+        groups = if (is.null(groups)) NULL else lapply(groups, `[`, index),
+        group_penalty = group_penalty,
         loss = loss, n_bins = n_bins,
         hidden_units = hidden_units, epochs = epochs, batch_size = batch_size,
         lr = lr, validation = validation, early_stopping = early_stopping,
@@ -299,6 +355,7 @@ densemlp <- function(x = NULL, y = NULL,
     out <- list(
       call = match.call(), members = members, ensemble = as.integer(ensemble),
       ensemble_bootstrap = isTRUE(ensemble_bootstrap), task = task, loss = loss,
+      has_offset = !is.null(offset), group_names = names(groups),
       outcome_name = outcome_name,
       task_code = members[[1L]]$task_code, levels = members[[1L]]$levels,
       hidden_units = as.integer(hidden_units), epochs = as.integer(epochs),
@@ -317,7 +374,7 @@ densemlp <- function(x = NULL, y = NULL,
   blueprint <- densemlp_train_blueprint(x)
   xmat <- densemlp_apply_blueprint(blueprint, x)
 
-  task_code <- switch(task, regression = 0L, binary = 1L, multiclass = 2L, survival = 3L)
+  task_code <- switch(task, regression = 0L, binary = 1L, multiclass = 2L, survival = 3L, count = 4L)
   levels_y <- NULL
   y_center <- 0
   y_scale <- 1
@@ -329,6 +386,17 @@ densemlp <- function(x = NULL, y = NULL,
     y_scale <- stats::sd(y_num)
     if (!is.finite(y_scale) || y_scale == 0) y_scale <- 1
     ymat <- matrix((y_num - y_center) / y_scale, ncol = 1)
+  } else if (task_code == 1L && is.numeric(y) && !all(y %in% c(0, 1))) {
+    if (any(!is.finite(y)) || any(y < 0 | y > 1)) {
+      stop("A numeric `task = \"binary\"` outcome must be proportions in [0, 1].", call. = FALSE)
+    }
+    levels_y <- c("0", "1")
+    ymat <- matrix(as.numeric(y), ncol = 1)
+  } else if (task_code == 4L) {
+    if (!is.numeric(y) || any(!is.finite(y)) || any(y < 0)) {
+      stop("`task = \"count\"` requires a non-negative numeric outcome.", call. = FALSE)
+    }
+    ymat <- matrix(as.numeric(y), ncol = 1)
   } else if (task_code == 1L) {
     y_fac <- factor(y)
     levels_y <- levels(y_fac)
@@ -366,6 +434,14 @@ densemlp <- function(x = NULL, y = NULL,
     }
   }
 
+  offset_mat <- matrix(numeric(), 0, 0)
+  if (!is.null(offset)) {
+    offset_mat <- densemlp_offset_matrix(offset, nrow(xmat), output_dim)
+    if (task_code == 0L) offset_mat <- offset_mat / y_scale
+  }
+  group_codes <- lapply(groups, function(g) as.integer(g) - 1L)
+  group_levels <- lapply(groups, levels)
+
   # arma::arma_rng::set_seed() wraps R's own RNG stream, so reproducibility across
   # calls requires the R-level generator to be seeded too -- otherwise training
   # draws (init weights, dropout masks, train/validation shuffling) depend on
@@ -383,7 +459,11 @@ densemlp <- function(x = NULL, y = NULL,
       input_projection = if (is.null(input_projection)) 0L else as.integer(input_projection),
       ema_decay = ema_decay, lr_schedule = lr_schedule,
       seed = as.integer(seed), verbose = isTRUE(verbose),
-      survival_loss = survival_loss_code, breaks_in = breaks, ghat_grid_in = ghat_grid
+      survival_loss = survival_loss_code, breaks_in = breaks, ghat_grid_in = ghat_grid,
+      offset = offset_mat, group_codes = group_codes,
+      group_levels = vapply(group_levels, length, integer(1)),
+      group_penalty = rep_len(as.numeric(group_penalty), length(groups)),
+      valid_rows = valid_rows
     ),
     warning = function(w) {
       if (grepl("RNG seed has to be set at the R level", conditionMessage(w))) {
@@ -410,6 +490,10 @@ densemlp <- function(x = NULL, y = NULL,
     interaction_biases = fit$interaction_biases,
     proj_weights = fit$proj_weights,
     proj_biases = fit$proj_biases,
+    group_weights = stats::setNames(fit$group_weights, names(groups)),
+    group_levels = group_levels,
+    group_penalty = group_penalty,
+    has_offset = !is.null(offset),
     train_history = fit$train_history,
     valid_history = fit$valid_history,
     lr_history = fit$lr_history,

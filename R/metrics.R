@@ -64,7 +64,8 @@ densemlp_integrated_brier_score <- function(object, newdata, y) {
 #'   matrix/data.frame.
 #' @param estimate Predicted values (`type = "response"` for regression and
 #'   survival, `type = "class"` for classification).
-#' @param task `"regression"`, `"binary"`, `"multiclass"`, or `"survival"`.
+#' @param task `"regression"`, `"binary"`, `"multiclass"`, `"survival"`, or
+#'   `"count"` (scored like regression).
 #' @param prob Optional matrix of class probabilities (classification only),
 #'   used to compute `macro_auc` and `log_loss`.
 #'
@@ -77,7 +78,7 @@ densemlp_metrics <- function(truth, estimate, task, prob = NULL) {
     te <- densemlp_as_time_event_matrix(truth)
     return(list(concordance = concordance_index(te[, 1], te[, 2], as.numeric(estimate))))
   }
-  if (identical(task, "regression")) {
+  if (task %in% c("regression", "count")) {
     truth <- as.numeric(truth)
     estimate <- as.numeric(estimate)
     rmse <- sqrt(mean((estimate - truth)^2))

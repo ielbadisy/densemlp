@@ -25,7 +25,7 @@
 #' cv <- cv_densemlp(x, y, folds = 3, epochs = 20, hidden_units = c(8))
 #' cv$summary
 #' @export
-cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival"),
+cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                      folds = 5L, seed = 1L, ncores = 1L, verbose = FALSE, ...) {
   task <- match.arg(task)
   folds <- as.integer(folds)
@@ -52,7 +52,7 @@ cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multicla
     )
     truth <- densemlp_index_outcome(y, test_idx)
     newdata <- x[test_idx, , drop = FALSE]
-    if (fit$task %in% c("regression", "survival")) {
+    if (fit$task %in% c("regression", "survival", "count")) {
       estimate <- stats::predict(fit, newdata, type = "response")
       prob <- NULL
     } else {

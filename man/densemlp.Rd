@@ -8,7 +8,7 @@
 densemlp(
   x = NULL,
   y = NULL,
-  task = c("auto", "regression", "binary", "multiclass", "survival"),
+  task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
   loss = c("cox", "brier"),
   n_bins = 10L,
   hidden_units = c(32, 16),
@@ -34,7 +34,10 @@ densemlp(
   verbose = FALSE,
   ncores = 1L,
   formula = NULL,
-  data = NULL
+  data = NULL,
+  offset = NULL,
+  groups = NULL,
+  group_penalty = 0
 )
 
 \method{print}{densemlp}(x, ...)
@@ -44,14 +47,17 @@ densemlp(
 
 \item{y}{Outcome (\code{x}/\code{y} interface): numeric for regression, a
 factor/character (2 levels for binary, 3+ for multiclass) for
-classification, or, for \code{task = "survival"}, a \code{\link[survival:Surv]{survival::Surv()}}
+classification, numeric proportions in \verb{[0, 1]} for \code{task = "binary"}
+(a fractional / quasi-binomial outcome), non-negative counts for
+\code{task = "count"}, or, for \code{task = "survival"}, a \code{\link[survival:Surv]{survival::Surv()}}
 object or a two-column matrix/data.frame giving \verb{(time, event)}
 (\code{event} coded \code{1} = event, \code{0} = censored).}
 
 \item{task}{\code{"auto"} infers the task from \code{y} (a \code{\link[survival:Surv]{survival::Surv()}}
 response, from either interface, is always detected as \code{"survival"});
 otherwise one of \code{"regression"}, \code{"binary"}, \code{"multiclass"},
-\code{"survival"}.}
+\code{"survival"}, \code{"count"} (Poisson log-likelihood with a log link; never
+inferred, so it must be requested).}
 
 \item{loss}{For \code{task = "survival"} only: \code{"cox"} (batch-wise Breslow-tie
 Cox partial likelihood, a single linear risk score) or \code{"brier"}
@@ -62,7 +68,9 @@ hazard outputs; see the "Survival" section below). Ignored otherwise.}
 discrete-time bins (quantile cutpoints of the observed follow-up
 times).}
 
-\item{hidden_units}{Integer vector of hidden layer sizes.}
+\item{hidden_units}{Integer vector of hidden layer sizes. An empty vector
+(\code{integer(0)}) gives a linear model (a GLM fitted by stochastic
+gradient descent).}
 
 \item{epochs}{Maximum number of training epochs (an upper bound when
 \code{early_stopping} is used).}
@@ -71,9 +79,11 @@ times).}
 
 \item{lr}{Adam learning rate.}
 
-\item{validation}{Validation fraction held out for early stopping.
-Set to \code{0} to disable (trains for the full \code{epochs}, no BN running-stat
-evaluation set).}
+\item{validation}{Validation fraction in \verb{[0, 1)} held out for early
+stopping, or an integer vector of at least two row indices to hold out
+(for example a split by cluster or by time). Set to \code{0} to disable (trains for the full
+\code{epochs}, no BN running-stat evaluation set). Row indices cannot be
+combined with \code{ensemble > 1}.}
 
 \item{early_stopping}{Logical; stop once validation loss stops improving.
 Ignored if \code{validation = 0}.}
@@ -137,6 +147,25 @@ the first positional argument -- \code{densemlp(y ~ ., df)},
 
 \item{data}{A data.frame used with \code{formula}.}
 
+\item{offset}{Optional fixed term added to the linear predictor (the
+output before its activation), on the scale of the outcome for
+regression and of the link otherwise (log for \code{"count"}, logit for
+\code{"binary"}). A numeric vector with one value per row, or for
+\code{"multiclass"} a matrix with one column per class. Not available for
+\code{task = "survival"}.}
+
+\item{groups}{Optional grouping factor(s): a vector, or a list or
+data.frame of vectors, each with one value per row. Every level of
+every grouping factor gets its own learned intercept on the linear
+predictor (one per class for multiclass), trained jointly with the
+network. This gives fixed-effect style cluster or period intercepts,
+as in panel data. Not available for \code{task = "survival"}.}
+
+\item{group_penalty}{Non-negative ridge penalty on the group intercepts,
+added to each mini-batch loss as \code{group_penalty} times the mean squared
+intercept of each grouping factor. Either one value for all grouping
+factors or one value per factor. \code{0} (default) leaves them unpenalized.}
+
 \item{...}{Unused.}
 }
 \value{
@@ -164,13 +193,20 @@ bootstrapped rows, and their response probabilities/predictions are averaged
 transparently. The output layer is plain
 \verb{Linear -> task activation} (no BN): linear (regression, MSE loss),
 sigmoid (binary, binary cross-entropy), softmax (multiclass, categorical
-cross-entropy), or a linear risk score (survival, Cox partial
-likelihood); the first three share the output-gradient simplification
+cross-entropy), exponential (count, Poisson log-likelihood), or a linear
+risk score (survival, Cox partial likelihood); the first four share the
+output-gradient simplification
 \code{dZ = (yhat - y) / n}, while survival uses its own closed-form Cox
 gradient (see the "Survival" section below). With \code{validation > 0} and
 \code{early_stopping = TRUE} (both on by default), the parameters (weights,
 biases, and BN affine/running-stat parameters) from the best validation
 epoch are restored at the end.
+
+\code{offset} and \code{groups} both enter the linear predictor additively, after
+the output layer and before its activation, so the fitted model is
+\verb{g(E[y]) = f(x) + offset + sum_k alpha_k[group_k]}, where \code{f} is the
+network and the \code{alpha_k} are the per-level intercepts (see
+\code{\link[=group_effects]{group_effects()}}).
 }
 \section{Survival}{
 

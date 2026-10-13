@@ -36,7 +36,7 @@
 #' )
 #' tuned$best_config
 #' @export
-tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival"),
+tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                        grid = NULL, validation = 0.2, seed = 1L, repeats = 3L,
                        ncores = 1L, verbose = FALSE, refit = TRUE) {
   task <- match.arg(task)

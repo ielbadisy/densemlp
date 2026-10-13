@@ -37,6 +37,7 @@ perm_importance <- function(object, new_data, truth, metric = NULL,
   task <- object$task
   metric <- metric %||% switch(task,
     regression = "rmse",
+    count = "rmse",
     survival = "concordance",
     "accuracy"
   )
@@ -65,7 +66,7 @@ perm_importance <- function(object, new_data, truth, metric = NULL,
 
 #' @keywords internal
 score_densemlp_metric <- function(object, new_data, truth, metric, task) {
-  if (identical(task, "regression")) {
+  if (task %in% c("regression", "count")) {
     pred <- stats::predict(object, new_data, type = "response")
     return(densemlp_metrics(truth, pred, task = "regression")[[metric]])
   }

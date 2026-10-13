@@ -1,4 +1,23 @@
-# densemlp 0.7.2
+# densemlp 0.8.0
+
+## New features
+
+* `groups` and `group_penalty` arguments: every level of one or more
+  grouping factors gets its own learned intercept on the linear predictor,
+  trained jointly with the network (fixed-effect style cluster or period
+  intercepts, as in panel data), with one ridge penalty overall or one per
+  grouping factor. New `group_effects()` extracts them.
+* `offset` argument, in `densemlp()` and `predict()`: a fixed term added to
+  the linear predictor (a vector, or a one-column-per-class matrix for
+  multiclass).
+* `task = "count"`: Poisson log-likelihood with a log link, for
+  non-negative counts.
+* `task = "binary"` accepts numeric proportions in `[0, 1]` (a fractional
+  or quasi-binomial outcome).
+* `validation` accepts a vector of (at least two) row indices to hold out, for grouped or
+  time-ordered validation splits.
+* `hidden_units = integer(0)` fits a linear model (no hidden layers),
+  useful as a GLM baseline sharing the same offset and group terms.
 
 ## Bug fixes
 

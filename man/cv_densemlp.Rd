@@ -7,7 +7,7 @@
 cv_densemlp(
   x,
   y,
-  task = c("auto", "regression", "binary", "multiclass", "survival"),
+  task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
   folds = 5L,
   seed = 1L,
   ncores = 1L,

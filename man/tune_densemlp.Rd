@@ -7,7 +7,7 @@
 tune_densemlp(
   x,
   y,
-  task = c("auto", "regression", "binary", "multiclass", "survival"),
+  task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
   grid = NULL,
   validation = 0.2,
   seed = 1L,

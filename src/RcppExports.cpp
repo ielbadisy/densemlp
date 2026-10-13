@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // densemlp_train_cpp
-List densemlp_train_cpp(const arma::mat& X, const arma::mat& Y, Rcpp::IntegerVector hidden_units, int task, int output_dim, int epochs, int batch_size, double lr, double validation, bool early_stopping, int patience, double min_delta, int min_epochs, bool residual, bool gated, Rcpp::NumericVector dropout, bool interaction, bool batch_norm, int input_projection, double ema_decay, std::string lr_schedule, unsigned int seed, bool verbose, int survival_loss, Rcpp::NumericVector breaks_in, Rcpp::NumericVector ghat_grid_in);
-RcppExport SEXP _densemlp_densemlp_train_cpp(SEXP XSEXP, SEXP YSEXP, SEXP hidden_unitsSEXP, SEXP taskSEXP, SEXP output_dimSEXP, SEXP epochsSEXP, SEXP batch_sizeSEXP, SEXP lrSEXP, SEXP validationSEXP, SEXP early_stoppingSEXP, SEXP patienceSEXP, SEXP min_deltaSEXP, SEXP min_epochsSEXP, SEXP residualSEXP, SEXP gatedSEXP, SEXP dropoutSEXP, SEXP interactionSEXP, SEXP batch_normSEXP, SEXP input_projectionSEXP, SEXP ema_decaySEXP, SEXP lr_scheduleSEXP, SEXP seedSEXP, SEXP verboseSEXP, SEXP survival_lossSEXP, SEXP breaks_inSEXP, SEXP ghat_grid_inSEXP) {
+List densemlp_train_cpp(const arma::mat& X, const arma::mat& Y, Rcpp::IntegerVector hidden_units, int task, int output_dim, int epochs, int batch_size, double lr, double validation, bool early_stopping, int patience, double min_delta, int min_epochs, bool residual, bool gated, Rcpp::NumericVector dropout, bool interaction, bool batch_norm, int input_projection, double ema_decay, std::string lr_schedule, unsigned int seed, bool verbose, int survival_loss, Rcpp::NumericVector breaks_in, Rcpp::NumericVector ghat_grid_in, const arma::mat& offset, Rcpp::List group_codes, Rcpp::IntegerVector group_levels, arma::vec group_penalty, Rcpp::IntegerVector valid_rows);
+RcppExport SEXP _densemlp_densemlp_train_cpp(SEXP XSEXP, SEXP YSEXP, SEXP hidden_unitsSEXP, SEXP taskSEXP, SEXP output_dimSEXP, SEXP epochsSEXP, SEXP batch_sizeSEXP, SEXP lrSEXP, SEXP validationSEXP, SEXP early_stoppingSEXP, SEXP patienceSEXP, SEXP min_deltaSEXP, SEXP min_epochsSEXP, SEXP residualSEXP, SEXP gatedSEXP, SEXP dropoutSEXP, SEXP interactionSEXP, SEXP batch_normSEXP, SEXP input_projectionSEXP, SEXP ema_decaySEXP, SEXP lr_scheduleSEXP, SEXP seedSEXP, SEXP verboseSEXP, SEXP survival_lossSEXP, SEXP breaks_inSEXP, SEXP ghat_grid_inSEXP, SEXP offsetSEXP, SEXP group_codesSEXP, SEXP group_levelsSEXP, SEXP group_penaltySEXP, SEXP valid_rowsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -43,13 +43,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type survival_loss(survival_lossSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type breaks_in(breaks_inSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type ghat_grid_in(ghat_grid_inSEXP);
-    rcpp_result_gen = Rcpp::wrap(densemlp_train_cpp(X, Y, hidden_units, task, output_dim, epochs, batch_size, lr, validation, early_stopping, patience, min_delta, min_epochs, residual, gated, dropout, interaction, batch_norm, input_projection, ema_decay, lr_schedule, seed, verbose, survival_loss, breaks_in, ghat_grid_in));
+    Rcpp::traits::input_parameter< const arma::mat& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type group_codes(group_codesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type group_levels(group_levelsSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type group_penalty(group_penaltySEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type valid_rows(valid_rowsSEXP);
+    rcpp_result_gen = Rcpp::wrap(densemlp_train_cpp(X, Y, hidden_units, task, output_dim, epochs, batch_size, lr, validation, early_stopping, patience, min_delta, min_epochs, residual, gated, dropout, interaction, batch_norm, input_projection, ema_decay, lr_schedule, seed, verbose, survival_loss, breaks_in, ghat_grid_in, offset, group_codes, group_levels, group_penalty, valid_rows));
     return rcpp_result_gen;
 END_RCPP
 }
 // densemlp_predict_cpp
-arma::mat densemlp_predict_cpp(const arma::mat& X, List weights, List biases, List gamma, List beta, List running_mean, List running_var, List residual_weights, List residual_biases, List gate_weights, List gate_biases, arma::vec interaction_weights, arma::vec interaction_biases, arma::mat proj_weights, arma::vec proj_biases, int task, bool residual, bool gated, bool interaction, bool batch_norm, int input_projection);
-RcppExport SEXP _densemlp_densemlp_predict_cpp(SEXP XSEXP, SEXP weightsSEXP, SEXP biasesSEXP, SEXP gammaSEXP, SEXP betaSEXP, SEXP running_meanSEXP, SEXP running_varSEXP, SEXP residual_weightsSEXP, SEXP residual_biasesSEXP, SEXP gate_weightsSEXP, SEXP gate_biasesSEXP, SEXP interaction_weightsSEXP, SEXP interaction_biasesSEXP, SEXP proj_weightsSEXP, SEXP proj_biasesSEXP, SEXP taskSEXP, SEXP residualSEXP, SEXP gatedSEXP, SEXP interactionSEXP, SEXP batch_normSEXP, SEXP input_projectionSEXP) {
+arma::mat densemlp_predict_cpp(const arma::mat& X, List weights, List biases, List gamma, List beta, List running_mean, List running_var, List residual_weights, List residual_biases, List gate_weights, List gate_biases, arma::vec interaction_weights, arma::vec interaction_biases, arma::mat proj_weights, arma::vec proj_biases, int task, bool residual, bool gated, bool interaction, bool batch_norm, int input_projection, const arma::mat& offset, List group_weights, List group_codes);
+RcppExport SEXP _densemlp_densemlp_predict_cpp(SEXP XSEXP, SEXP weightsSEXP, SEXP biasesSEXP, SEXP gammaSEXP, SEXP betaSEXP, SEXP running_meanSEXP, SEXP running_varSEXP, SEXP residual_weightsSEXP, SEXP residual_biasesSEXP, SEXP gate_weightsSEXP, SEXP gate_biasesSEXP, SEXP interaction_weightsSEXP, SEXP interaction_biasesSEXP, SEXP proj_weightsSEXP, SEXP proj_biasesSEXP, SEXP taskSEXP, SEXP residualSEXP, SEXP gatedSEXP, SEXP interactionSEXP, SEXP batch_normSEXP, SEXP input_projectionSEXP, SEXP offsetSEXP, SEXP group_weightsSEXP, SEXP group_codesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -74,14 +79,17 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type interaction(interactionSEXP);
     Rcpp::traits::input_parameter< bool >::type batch_norm(batch_normSEXP);
     Rcpp::traits::input_parameter< int >::type input_projection(input_projectionSEXP);
-    rcpp_result_gen = Rcpp::wrap(densemlp_predict_cpp(X, weights, biases, gamma, beta, running_mean, running_var, residual_weights, residual_biases, gate_weights, gate_biases, interaction_weights, interaction_biases, proj_weights, proj_biases, task, residual, gated, interaction, batch_norm, input_projection));
+    Rcpp::traits::input_parameter< const arma::mat& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< List >::type group_weights(group_weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type group_codes(group_codesSEXP);
+    rcpp_result_gen = Rcpp::wrap(densemlp_predict_cpp(X, weights, biases, gamma, beta, running_mean, running_var, residual_weights, residual_biases, gate_weights, gate_biases, interaction_weights, interaction_biases, proj_weights, proj_biases, task, residual, gated, interaction, batch_norm, input_projection, offset, group_weights, group_codes));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_densemlp_densemlp_train_cpp", (DL_FUNC) &_densemlp_densemlp_train_cpp, 26},
-    {"_densemlp_densemlp_predict_cpp", (DL_FUNC) &_densemlp_densemlp_predict_cpp, 21},
+    {"_densemlp_densemlp_train_cpp", (DL_FUNC) &_densemlp_densemlp_train_cpp, 31},
+    {"_densemlp_densemlp_predict_cpp", (DL_FUNC) &_densemlp_densemlp_predict_cpp, 24},
     {NULL, NULL, 0}
 };
 

@@ -8,6 +8,8 @@
   object,
   newdata,
   type = c("response", "class", "prob", "survival"),
+  offset = NULL,
+  groups = NULL,
   ...
 )
 }
@@ -17,12 +19,21 @@
 \item{newdata}{New predictor data, in the same representation used to fit.}
 
 \item{type}{\code{"response"} (regression: unscaled prediction; binary:
-predicted probability of the second factor level; survival: a linear
+predicted probability of the second factor level; count: predicted
+mean; survival: a linear
 risk score, higher = riskier, for either \code{loss}), \code{"class"}
 (classification only: predicted factor label), \code{"prob"}
 (classification only: a matrix of class probabilities), or
 \code{"survival"} (survival with \code{loss = "brier"} only: the full
 \code{n_bins}-column survival-probability matrix).}
+
+\item{offset}{Offset for \code{newdata}, in the same form as in \code{\link[=densemlp]{densemlp()}}.
+\code{NULL} (default) uses zero. Supply it whenever the model was fitted
+with an offset.}
+
+\item{groups}{Grouping factor(s) for \code{newdata}, in the same form as in
+\code{\link[=densemlp]{densemlp()}}. Levels not seen in training, and every row when \code{groups}
+is \code{NULL}, get a zero intercept (a population-level prediction).}
 
 \item{...}{Unused.}
 }

@@ -3,36 +3,44 @@
 #' @param object A fitted `densemlp` object.
 #' @param newdata New predictor data, in the same representation used to fit.
 #' @param type `"response"` (regression: unscaled prediction; binary:
-#'   predicted probability of the second factor level; survival: a linear
+#'   predicted probability of the second factor level; count: predicted
+#'   mean; survival: a linear
 #'   risk score, higher = riskier, for either `loss`), `"class"`
 #'   (classification only: predicted factor label), `"prob"`
 #'   (classification only: a matrix of class probabilities), or
 #'   `"survival"` (survival with `loss = "brier"` only: the full
 #'   `n_bins`-column survival-probability matrix).
+#' @param offset Offset for `newdata`, in the same form as in [densemlp()].
+#'   `NULL` (default) uses zero. Supply it whenever the model was fitted
+#'   with an offset.
+#' @param groups Grouping factor(s) for `newdata`, in the same form as in
+#'   [densemlp()]. Levels not seen in training, and every row when `groups`
+#'   is `NULL`, get a zero intercept (a population-level prediction).
 #' @param ... Unused.
 #' @return A numeric vector (`"response"`), a factor (`"class"`), or a
 #'   matrix (`"prob"` or `"survival"`).
 #' @export
-predict.densemlp <- function(object, newdata, type = c("response", "class", "prob", "survival"), ...) {
+predict.densemlp <- function(object, newdata, type = c("response", "class", "prob", "survival"),
+                             offset = NULL, groups = NULL, ...) {
   type <- match.arg(type)
   if (identical(type, "survival") && object$task_code != 3L) {
     stop("`type = \"survival\"` is only defined for `task = \"survival\"`.", call. = FALSE)
   }
   if (!is.null(object$members)) {
-    if (object$task_code == 0L) {
-      if (type != "response") stop("`type` must be \"response\" for regression.", call. = FALSE)
-      predictions <- lapply(object$members, stats::predict, newdata = newdata, type = "response")
+    if (object$task_code %in% c(0L, 4L)) {
+      if (type != "response") stop("`type` must be \"response\" for regression and count.", call. = FALSE)
+      predictions <- lapply(object$members, stats::predict, newdata = newdata, offset = offset, groups = groups, type = "response")
       return(Reduce(`+`, predictions) / length(predictions))
     }
     if (object$task_code == 3L) {
       if (type != "response") {
         stop("`type = \"survival\"` is not supported for ensembles (members may use different time grids); use \"response\" for the averaged risk score.", call. = FALSE)
       }
-      predictions <- lapply(object$members, stats::predict, newdata = newdata, type = "response")
+      predictions <- lapply(object$members, stats::predict, newdata = newdata, offset = offset, groups = groups, type = "response")
       return(Reduce(`+`, predictions) / length(predictions))
     }
     if (object$task_code == 1L) {
-      probabilities <- lapply(object$members, stats::predict, newdata = newdata, type = "response")
+      probabilities <- lapply(object$members, stats::predict, newdata = newdata, offset = offset, groups = groups, type = "response")
       prob1 <- Reduce(`+`, probabilities) / length(probabilities)
       prob_mat <- cbind(1 - prob1, prob1)
       colnames(prob_mat) <- object$levels
@@ -43,7 +51,7 @@ predict.densemlp <- function(object, newdata, type = c("response", "class", "pro
     if (type == "response") {
       stop("`type = \"response\"` is not defined for multiclass; use \"class\" or \"prob\".", call. = FALSE)
     }
-    probabilities <- lapply(object$members, stats::predict, newdata = newdata, type = "prob")
+    probabilities <- lapply(object$members, stats::predict, newdata = newdata, offset = offset, groups = groups, type = "prob")
     prob_mat <- Reduce(`+`, probabilities) / length(probabilities)
     if (type == "prob") return(prob_mat)
     return(factor(object$levels[max.col(prob_mat, ties.method = "first")], levels = object$levels))
@@ -74,6 +82,15 @@ predict.densemlp <- function(object, newdata, type = c("response", "class", "pro
     proj_weights <- matrix(numeric(), 0, 0)
     proj_biases <- numeric()
   }
+  n_new <- nrow(xmat)
+  output_dim <- ncol(object$weights[[length(object$weights)]])
+  offset_mat <- matrix(numeric(), 0, 0)
+  if (!is.null(offset)) {
+    offset_mat <- densemlp_offset_matrix(offset, n_new, output_dim)
+    if (object$task_code == 0L) offset_mat <- offset_mat / object$y_scale
+  }
+  group_weights <- if (is.null(object$group_weights)) list() else unname(object$group_weights)
+  group_codes <- densemlp_group_codes(object, groups, n_new)
   batch_norm <- if (is.null(object$batch_norm)) TRUE else isTRUE(object$batch_norm)
   input_projection <- if (is.null(object$input_projection)) 0L else as.integer(object$input_projection)
   raw <- densemlp_predict_cpp(
@@ -83,12 +100,18 @@ predict.densemlp <- function(object, newdata, type = c("response", "class", "pro
     gate_weights, gate_biases, interaction_weights, interaction_biases,
     proj_weights, proj_biases,
     object$task_code, isTRUE(object$residual), isTRUE(object$gated),
-    isTRUE(object$interaction), batch_norm, input_projection
+    isTRUE(object$interaction), batch_norm, input_projection,
+    offset_mat, group_weights, group_codes
   )
 
   if (object$task_code == 0L) {
     if (type != "response") stop("`type` must be \"response\" for regression.", call. = FALSE)
     return(as.numeric(raw[, 1]) * object$y_scale + object$y_center)
+  }
+
+  if (object$task_code == 4L) {
+    if (type != "response") stop("`type` must be \"response\" for count.", call. = FALSE)
+    return(as.numeric(raw[, 1]))
   }
 
   if (object$task_code == 3L) {
@@ -134,14 +157,14 @@ print.densemlp <- function(x, ...) {
   if (identical(x$task, "survival")) {
     cat("  survival loss: ", if (is.null(x$loss)) "cox" else x$loss, "\n", sep = "")
   }
-  cat("  hidden_units: ", paste(x$hidden_units, collapse = "-"), "\n", sep = "")
+  cat("  hidden_units: ", if (length(x$hidden_units)) paste(x$hidden_units, collapse = "-") else "none (linear)", "\n", sep = "")
   cat("  ensemble: ", if (is.null(x$ensemble)) 1L else x$ensemble, "\n", sep = "")
   cat("  batch_norm: ", if (is.null(x$batch_norm)) TRUE else isTRUE(x$batch_norm), "\n", sep = "")
   cat("  input_projection: ", if (is.null(x$input_projection)) "none" else x$input_projection, "\n", sep = "")
   cat("  residual: ", isTRUE(x$residual), "\n", sep = "")
   cat("  gated: ", isTRUE(x$gated), "\n", sep = "")
   cat("  interaction: ", isTRUE(x$interaction), "\n", sep = "")
-  cat("  dropout: ", paste(if (is.null(x$dropout)) 0 else x$dropout, collapse = "-"), "\n", sep = "")
+  cat("  dropout: ", if (length(x$dropout)) paste(x$dropout, collapse = "-") else 0, "\n", sep = "")
   cat("  EMA decay: ", if (is.null(x$ema_decay)) 0 else x$ema_decay, "\n", sep = "")
   cat("  lr schedule: ", if (is.null(x$lr_schedule)) "none" else x$lr_schedule, "\n", sep = "")
   if (!is.null(x$members)) {

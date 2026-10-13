@@ -14,7 +14,8 @@ matrix/data.frame.}
 \item{estimate}{Predicted values (\code{type = "response"} for regression and
 survival, \code{type = "class"} for classification).}
 
-\item{task}{\code{"regression"}, \code{"binary"}, \code{"multiclass"}, or \code{"survival"}.}
+\item{task}{\code{"regression"}, \code{"binary"}, \code{"multiclass"}, \code{"survival"}, or
+\code{"count"} (scored like regression).}
 
 \item{prob}{Optional matrix of class probabilities (classification only),
 used to compute \code{macro_auc} and \code{log_loss}.}

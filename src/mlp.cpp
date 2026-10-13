@@ -6,7 +6,8 @@ using namespace arma;
 // Task codes: 0 = regression (linear output, MSE), 1 = binary (sigmoid
 // output, BCE), 2 = multiclass (softmax output, categorical CE), 3 =
 // survival (linear risk score, batch-wise Breslow-tie Cox partial
-// likelihood). The first three share the same sigmoid/softmax +
+// likelihood), 4 = count (exp output, Poisson log-likelihood). Tasks 0, 1,
+// 2 and 4 share the same sigmoid/softmax +
 // cross-entropy gradient simplification dZ_out = (yhat - y) / n, so the
 // backward pass only branches on the output activation, not the loss; task
 // 3 uses its own closed-form Cox gradient (see cox_loss_and_grad below)
@@ -19,6 +20,12 @@ using namespace arma;
 // cross layer models input interactions before the MLP (the two are
 // mutually exclusive). Optional EMA parameters are used for validation /
 // final output. The output layer is plain Linear -> task activation, no BN.
+// Two optional additive terms enter the output pre-activation (the linear
+// predictor): a fixed per-row offset, and learned per-level group
+// intercepts (one row of output_dim values per level of each grouping
+// factor, zero-initialised, optionally ridge-penalised). Neither changes
+// the dZ_out simplification, and a group intercept's gradient is the sum
+// of dZ_out over the rows in that level.
 // Training supports a held-out validation split and early stopping on
 // validation loss, restoring all best-epoch parameters.
 //
@@ -62,13 +69,46 @@ struct MLPParams {
   vec interaction_B;
   mat proj_W;                      // linear input projection (empty when disabled)
   vec proj_B;
+  std::vector<mat> group_W;         // per grouping factor: n_levels x output_dim intercepts
 };
+
+// Additive output terms for one set of rows: a fixed offset (n x
+// output_dim, empty when unused) and one 0-based level code vector per
+// grouping factor (code -1 = level unseen in training, contributes zero).
+struct OutputTerms {
+  mat offset;
+  std::vector<ivec> codes;
+};
+
+static OutputTerms subset_terms(const OutputTerms &t, const uvec &idx) {
+  OutputTerms out;
+  if (!t.offset.is_empty()) out.offset = t.offset.rows(idx);
+  for (size_t k = 0; k < t.codes.size(); ++k) out.codes.push_back(t.codes[k].elem(idx));
+  return out;
+}
+
+static void add_output_terms(mat &zout, const MLPParams &p, const OutputTerms &t) {
+  if (!t.offset.is_empty()) zout += t.offset;
+  for (size_t k = 0; k < t.codes.size(); ++k) {
+    const ivec &code = t.codes[k];
+    for (uword i = 0; i < code.n_elem; ++i) {
+      if (code[i] >= 0) zout.row(i) += p.group_W[k].row((uword)code[i]);
+    }
+  }
+}
+
+static mat output_activation(const mat &zout, int task) {
+  if (task == 0 || task == 3) return zout; // regression / survival: linear risk score
+  if (task == 1) return sigmoid(zout);
+  if (task == 4) return arma::exp(arma::clamp(zout, -50.0, 20.0));
+  return softmax_rows(zout);
+}
 
 static void deep_copy(MLPParams &dst, const MLPParams &src) { dst = src; }
 
 static MLPParams init_params(const std::vector<uword> &sizes, unsigned int seed,
                              bool residual, bool gated, bool interaction,
-                             uword proj_in) {
+                             uword proj_in, const std::vector<uword> &group_levels) {
   arma::arma_rng::set_seed(seed);
   MLPParams p;
   size_t n_layers = sizes.size() - 1;
@@ -80,7 +120,13 @@ static MLPParams init_params(const std::vector<uword> &sizes, unsigned int seed,
   for (size_t l = 0; l < n_layers; ++l) {
     double fan_in = static_cast<double>(sizes[l]);
     double scale = std::sqrt(2.0 / fan_in);
-    p.W.push_back(arma::randn(sizes[l], sizes[l + 1]) * scale);
+    // A linear model (no hidden layer) starts from the null model, as in a
+    // GLM fit; random weights there only slow convergence.
+    if (n_layers == 1) {
+      p.W.push_back(arma::zeros(sizes[l], sizes[l + 1]));
+    } else {
+      p.W.push_back(arma::randn(sizes[l], sizes[l + 1]) * scale);
+    }
     p.B.push_back(arma::zeros(sizes[l + 1]));
     if (l + 1 < n_layers) { // hidden layer -> has BN affine slots
       p.gamma.push_back(arma::ones(sizes[l + 1]));
@@ -107,6 +153,9 @@ static MLPParams init_params(const std::vector<uword> &sizes, unsigned int seed,
   if (interaction) {
     p.interaction_W = arma::zeros(sizes[0]);
     p.interaction_B = arma::zeros(sizes[0]);
+  }
+  for (size_t k = 0; k < group_levels.size(); ++k) {
+    p.group_W.push_back(arma::zeros(group_levels[k], sizes.back()));
   }
   return p;
 }
@@ -144,7 +193,8 @@ static mat apply_interaction(const MLPParams &p, const mat &X, bool interaction)
 
 static void forward_train(MLPParams &p, const mat &X, int task, bool residual,
                           bool gated, const vec &dropout, bool interaction,
-                          bool batch_norm, bool use_proj, ForwardCache &c) {
+                          bool batch_norm, bool use_proj, const OutputTerms &terms,
+                          ForwardCache &c) {
   size_t n_layers = p.W.size();
   size_t n_hidden = n_layers - 1;
   c.A.clear(); c.Z.clear(); c.Zbn.clear(); c.batch_mean.clear(); c.batch_var.clear(); c.Xhat.clear();
@@ -215,17 +265,15 @@ static void forward_train(MLPParams &p, const mat &X, int task, bool residual,
 
   mat zout = c.A.back() * p.W[n_hidden];
   zout.each_row() += p.B[n_hidden].t();
-  mat out;
-  if (task == 0 || task == 3) out = zout; // regression / survival: linear risk score
-  else if (task == 1) out = sigmoid(zout);
-  else out = softmax_rows(zout);
-  c.A.push_back(out);
+  add_output_terms(zout, p, terms);
+  c.A.push_back(output_activation(zout, task));
 }
 
 // Inference-mode forward: uses running mean/var instead of batch statistics,
 // no caching, no running-stat updates. Used for validation loss and predict().
 static mat forward_eval(const MLPParams &p, const mat &X, int task, bool residual,
-                        bool gated, bool interaction, bool batch_norm, bool use_proj) {
+                        bool gated, bool interaction, bool batch_norm, bool use_proj,
+                        const OutputTerms &terms) {
   size_t n_layers = p.W.size();
   size_t n_hidden = n_layers - 1;
   mat a = apply_interaction(p, apply_projection(p, X, use_proj), interaction);
@@ -260,9 +308,8 @@ static mat forward_eval(const MLPParams &p, const mat &X, int task, bool residua
   }
   mat zout = a * p.W[n_hidden];
   zout.each_row() += p.B[n_hidden].t();
-  if (task == 0 || task == 3) return zout; // regression / survival: linear risk score
-  if (task == 1) return sigmoid(zout);
-  return softmax_rows(zout);
+  add_output_terms(zout, p, terms);
+  return output_activation(zout, task);
 }
 
 // Batch-wise Breslow-tie Cox negative partial log-likelihood and its
@@ -365,12 +412,16 @@ static double brier_loss_and_grad(const mat &Z, const mat &Y, const vec &breaks,
 }
 
 // Mean loss for the non-survival tasks: MSE (0), Bernoulli cross-entropy
-// (1), categorical cross-entropy (2). The binary case needs both terms of
+// (1), categorical cross-entropy (2), Poisson negative log-likelihood up to
+// a constant (4). Task 1 also accepts proportions in [0, 1]. The binary case needs both terms of
 // the Bernoulli log-likelihood; the categorical form alone would only
 // score the positive class.
 static double task_loss(const mat &yhat, const mat &Y, int task) {
   double n = (double)Y.n_rows;
   if (task == 0) return arma::accu(arma::square(yhat - Y)) / n;
+  if (task == 4) {
+    return arma::accu(yhat - Y % arma::log(arma::clamp(yhat, 1e-12, arma::datum::inf))) / n;
+  }
   mat clipped = arma::clamp(yhat, 1e-9, 1.0 - 1e-9);
   if (task == 1) {
     return -arma::accu(Y % arma::log(clipped) + (1.0 - Y) % arma::log(1.0 - clipped)) / n;
@@ -381,8 +432,9 @@ static double task_loss(const mat &yhat, const mat &Y, int task) {
 static double eval_loss(const MLPParams &p, const mat &X, const mat &Y, int task,
                         bool residual, bool gated, bool interaction, bool batch_norm,
                         bool use_proj, int survival_loss,
-                        const vec &breaks, const vec &ghat_grid) {
-  mat yhat = forward_eval(p, X, task, residual, gated, interaction, batch_norm, use_proj);
+                        const vec &breaks, const vec &ghat_grid, const OutputTerms &terms) {
+  mat yhat = forward_eval(p, X, task, residual, gated, interaction, batch_norm, use_proj,
+                          terms);
   if (task == 3) {
     if (survival_loss == 1) {
       mat grad_unused;
@@ -408,6 +460,7 @@ struct AdamState {
   vec mInteractionW, vInteractionW, mInteractionB, vInteractionB;
   mat mProjW, vProjW;
   vec mProjB, vProjB;
+  std::vector<mat> mGroupW, vGroupW;
   int t = 0;
 };
 
@@ -441,6 +494,10 @@ static AdamState init_adam(const MLPParams &p) {
   s.vProjW = arma::zeros(size(p.proj_W));
   s.mProjB = arma::zeros(size(p.proj_B));
   s.vProjB = arma::zeros(size(p.proj_B));
+  for (size_t k = 0; k < p.group_W.size(); ++k) {
+    s.mGroupW.push_back(arma::zeros(size(p.group_W[k])));
+    s.vGroupW.push_back(arma::zeros(size(p.group_W[k])));
+  }
   return s;
 }
 
@@ -463,7 +520,8 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
                                  const mat &Y, double lr, int task, bool residual, bool gated,
                                  const vec &dropout, bool interaction, bool batch_norm,
                                  bool use_proj, int survival_loss,
-                                 const vec &breaks, const vec &ghat_grid) {
+                                 const vec &breaks, const vec &ghat_grid,
+                                 const OutputTerms &terms, const vec &group_penalty) {
   size_t n_hidden = p.gamma.size();
   double nb = (double)c.A[0].n_rows;
 
@@ -480,6 +538,20 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
     dZ = grad_eta;
   } else {
     dZ = (c.A.back() - Y) / nb; // output layer gradient (shared simplification)
+  }
+
+  // Group intercepts: sum dZ_out over each level's rows, plus the gradient
+  // of group_penalty[k] * mean(group_W^2).
+  for (size_t k = 0; k < terms.codes.size(); ++k) {
+    mat dG = arma::zeros(size(p.group_W[k]));
+    const ivec &code = terms.codes[k];
+    for (uword i = 0; i < code.n_elem; ++i) {
+      if (code[i] >= 0) dG.row((uword)code[i]) += dZ.row(i);
+    }
+    if (group_penalty[k] > 0.0) {
+      dG += (2.0 * group_penalty[k] / (double)p.group_W[k].n_elem) * p.group_W[k];
+    }
+    adam_step(p.group_W[k], s.mGroupW[k], s.vGroupW[k], dG, lr, bc1, bc2);
   }
 
   // Output layer (index n_hidden in W/B, no BN).
@@ -616,9 +688,12 @@ static void update_ema(MLPParams &ema, const MLPParams &p, double decay) {
   ema_update_vec(ema.interaction_B, p.interaction_B, decay);
   ema_update_mat(ema.proj_W, p.proj_W, decay);
   ema_update_vec(ema.proj_B, p.proj_B, decay);
+  for (size_t k = 0; k < p.group_W.size(); ++k) ema_update_mat(ema.group_W[k], p.group_W[k], decay);
 }
 
 static List params_to_list(const MLPParams &p) {
+  List group_list(p.group_W.size());
+  for (size_t k = 0; k < p.group_W.size(); ++k) group_list[k] = p.group_W[k];
   List weights(p.W.size()), biases(p.B.size()), gamma(p.gamma.size()), beta(p.beta.size()),
        running_mean(p.running_mean.size()), running_var(p.running_var.size()),
        residual_weights(p.residual_W.size()), residual_biases(p.residual_B.size()),
@@ -639,7 +714,8 @@ static List params_to_list(const MLPParams &p) {
     Named("interaction_weights") = p.interaction_W,
     Named("interaction_biases") = p.interaction_B,
     Named("proj_weights") = p.proj_W,
-    Named("proj_biases") = p.proj_B
+    Named("proj_biases") = p.proj_B,
+    Named("group_weights") = group_list
   );
 }
 
@@ -665,7 +741,10 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
                         bool interaction, bool batch_norm, int input_projection,
                         double ema_decay, std::string lr_schedule,
                         unsigned int seed, bool verbose,
-                        int survival_loss, Rcpp::NumericVector breaks_in, Rcpp::NumericVector ghat_grid_in) {
+                        int survival_loss, Rcpp::NumericVector breaks_in, Rcpp::NumericVector ghat_grid_in,
+                        const arma::mat &offset, Rcpp::List group_codes,
+                        Rcpp::IntegerVector group_levels, arma::vec group_penalty,
+                        Rcpp::IntegerVector valid_rows) {
   vec breaks = as<vec>(breaks_in);
   vec ghat_grid = as<vec>(ghat_grid_in);
   bool use_proj = input_projection > 0;
@@ -677,8 +756,15 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
   sizes.push_back(p_out);
 
   vec dropout_vec = as<vec>(dropout);
+  std::vector<uword> n_levels;
+  OutputTerms terms;
+  terms.offset = offset;
+  for (int k = 0; k < group_codes.size(); ++k) {
+    terms.codes.push_back(as<ivec>(group_codes[k]));
+    n_levels.push_back((uword)group_levels[k]);
+  }
   MLPParams params = init_params(sizes, seed, residual, gated, interaction,
-                                 use_proj ? p_in : (uword)0);
+                                 use_proj ? p_in : (uword)0, n_levels);
   MLPParams ema_params = params;
   AdamState adam = init_adam(params);
 
@@ -686,8 +772,16 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
 
   uword valid_n = 0;
   uvec train_idx, valid_idx;
-  bool has_validation = validation > 0.0;
-  if (has_validation) {
+  bool has_validation = validation > 0.0 || valid_rows.size() > 0;
+  if (valid_rows.size() > 0) {
+    // Caller-supplied held-out rows (1-based), e.g. a grouped split.
+    valid_idx = arma::conv_to<uvec>::from(as<ivec>(valid_rows) - 1);
+    std::vector<bool> is_valid(n, false);
+    for (uword i = 0; i < valid_idx.n_elem; ++i) is_valid[valid_idx[i]] = true;
+    std::vector<uword> keep;
+    for (uword i = 0; i < n; ++i) if (!is_valid[i]) keep.push_back(i);
+    train_idx = arma::conv_to<uvec>::from(keep);
+  } else if (has_validation) {
     valid_n = std::max((uword)1, (uword)std::floor((double)n * validation));
     if (valid_n >= n) valid_n = std::max((uword)1, n - 1);
     uvec perm0 = arma::conv_to<uvec>::from(arma::shuffle(arma::regspace(0, n - 1)));
@@ -697,6 +791,8 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
     train_idx = arma::conv_to<uvec>::from(arma::regspace(0, n - 1));
   }
   mat X_train = X.rows(train_idx), Y_train = Y.rows(train_idx);
+  OutputTerms terms_train = subset_terms(terms, train_idx);
+  OutputTerms terms_valid = has_validation ? subset_terms(terms, valid_idx) : OutputTerms();
   uword n_train = X_train.n_rows;
 
   NumericVector train_history(epochs), valid_history(epochs), lr_history(epochs);
@@ -719,10 +815,11 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       uvec idx = perm.subvec(start, end);
       mat Xb = X_train.rows(idx);
       mat Yb = Y_train.rows(idx);
+      OutputTerms terms_b = subset_terms(terms_train, idx);
 
       ForwardCache cache;
       forward_train(params, Xb, task, residual, gated, dropout_vec, interaction,
-                    batch_norm, use_proj, cache);
+                    batch_norm, use_proj, terms_b, cache);
       mat yhat = cache.A.back();
       if (task == 3 && survival_loss == 1) {
         mat grad_unused;
@@ -736,7 +833,7 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       n_batches++;
       backward_and_update(params, adam, cache, Yb, current_lr, task, residual, gated,
                           dropout_vec, interaction, batch_norm, use_proj,
-                          survival_loss, breaks, ghat_grid);
+                          survival_loss, breaks, ghat_grid, terms_b, group_penalty);
       if (ema_decay > 0.0) update_ema(ema_params, params, ema_decay);
     }
 
@@ -746,7 +843,7 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       const MLPParams &eval_params = ema_decay > 0.0 ? ema_params : params;
       double vloss = eval_loss(eval_params, X.rows(valid_idx), Y.rows(valid_idx), task,
                                residual, gated, interaction, batch_norm, use_proj,
-                               survival_loss, breaks, ghat_grid);
+                               survival_loss, breaks, ghat_grid, terms_valid);
       valid_history[epoch] = vloss;
       if (vloss < best_loss - min_delta) {
         best_loss = vloss; best_epoch = epoch + 1; wait = 0;
@@ -788,7 +885,8 @@ arma::mat densemlp_predict_cpp(const arma::mat &X, List weights, List biases,
                                arma::vec interaction_weights, arma::vec interaction_biases,
                                arma::mat proj_weights, arma::vec proj_biases,
                                int task, bool residual, bool gated, bool interaction,
-                               bool batch_norm, int input_projection) {
+                               bool batch_norm, int input_projection,
+                               const arma::mat &offset, List group_weights, List group_codes) {
   MLPParams p;
   for (int l = 0; l < weights.size(); ++l) {
     p.W.push_back(as<mat>(weights[l]));
@@ -808,6 +906,12 @@ arma::mat densemlp_predict_cpp(const arma::mat &X, List weights, List biases,
   p.interaction_B = interaction_biases;
   p.proj_W = proj_weights;
   p.proj_B = proj_biases;
+  OutputTerms terms;
+  terms.offset = offset;
+  for (int k = 0; k < group_weights.size(); ++k) {
+    p.group_W.push_back(as<mat>(group_weights[k]));
+    terms.codes.push_back(as<ivec>(group_codes[k]));
+  }
   return forward_eval(p, X, task, residual, gated, interaction, batch_norm,
-                      input_projection > 0);
+                      input_projection > 0, terms);
 }
