@@ -263,3 +263,15 @@ test_that("ensemble aggregation supports regression and multiclass", {
   expect_equal(rowSums(multi_prob), rep(1, nrow(x)), tolerance = 1e-8)
   expect_s3_class(predict(multi_fit, x, type = "class"), "factor")
 })
+
+test_that("binary validation loss is the full Bernoulli cross-entropy", {
+  set.seed(11)
+  n <- 400
+  x <- data.frame(a = rnorm(n), b = rnorm(n))
+  y <- factor(rbinom(n, 1, 0.5))
+  fit <- densemlp(x, y, task = "binary", hidden_units = 4, epochs = 5,
+                  early_stopping = FALSE, seed = 3)
+  # Pure-noise outcome: the cross-entropy sits near log(2). Dropping the
+  # (1 - y) log(1 - p) term would roughly halve it.
+  expect_true(all(fit$valid_history > 0.6))
+})

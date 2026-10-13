@@ -364,13 +364,25 @@ static double brier_loss_and_grad(const mat &Z, const mat &Y, const vec &breaks,
   return total_loss / (double)K;
 }
 
+// Mean loss for the non-survival tasks: MSE (0), Bernoulli cross-entropy
+// (1), categorical cross-entropy (2). The binary case needs both terms of
+// the Bernoulli log-likelihood; the categorical form alone would only
+// score the positive class.
+static double task_loss(const mat &yhat, const mat &Y, int task) {
+  double n = (double)Y.n_rows;
+  if (task == 0) return arma::accu(arma::square(yhat - Y)) / n;
+  mat clipped = arma::clamp(yhat, 1e-9, 1.0 - 1e-9);
+  if (task == 1) {
+    return -arma::accu(Y % arma::log(clipped) + (1.0 - Y) % arma::log(1.0 - clipped)) / n;
+  }
+  return -arma::accu(Y % arma::log(clipped)) / n;
+}
+
 static double eval_loss(const MLPParams &p, const mat &X, const mat &Y, int task,
                         bool residual, bool gated, bool interaction, bool batch_norm,
                         bool use_proj, int survival_loss,
                         const vec &breaks, const vec &ghat_grid) {
   mat yhat = forward_eval(p, X, task, residual, gated, interaction, batch_norm, use_proj);
-  double n = (double)X.n_rows;
-  if (task == 0) return arma::accu(arma::square(yhat - Y)) / n;
   if (task == 3) {
     if (survival_loss == 1) {
       mat grad_unused;
@@ -379,8 +391,7 @@ static double eval_loss(const MLPParams &p, const mat &X, const mat &Y, int task
     vec grad_unused;
     return cox_loss_and_grad(yhat.col(0), Y.col(0), Y.col(1), grad_unused);
   }
-  mat clipped = arma::clamp(yhat, 1e-9, 1.0 - 1e-9);
-  return -arma::accu(Y % arma::log(clipped)) / n;
+  return task_loss(yhat, Y, task);
 }
 
 // Backpropagates dZ_out = (yhat - Y)/n through the whole network, applying
@@ -713,18 +724,14 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       forward_train(params, Xb, task, residual, gated, dropout_vec, interaction,
                     batch_norm, use_proj, cache);
       mat yhat = cache.A.back();
-      double nb = (double)Xb.n_rows;
-      if (task == 0) {
-        epoch_loss += arma::accu(arma::square(yhat - Yb)) / nb;
-      } else if (task == 3 && survival_loss == 1) {
+      if (task == 3 && survival_loss == 1) {
         mat grad_unused;
         epoch_loss += brier_loss_and_grad(yhat, Yb, breaks, ghat_grid, grad_unused);
       } else if (task == 3) {
         vec grad_unused;
         epoch_loss += cox_loss_and_grad(yhat.col(0), Yb.col(0), Yb.col(1), grad_unused);
       } else {
-        mat clipped = arma::clamp(yhat, 1e-9, 1.0 - 1e-9);
-        epoch_loss += -arma::accu(Yb % arma::log(clipped)) / nb;
+        epoch_loss += task_loss(yhat, Yb, task);
       }
       n_batches++;
       backward_and_update(params, adam, cache, Yb, current_lr, task, residual, gated,

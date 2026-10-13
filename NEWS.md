@@ -1,3 +1,13 @@
+# densemlp 0.7.2
+
+## Bug fixes
+
+* The binary validation (and reported training) loss now uses the full
+  Bernoulli cross-entropy. It previously dropped the `(1 - y) log(1 - p)`
+  term, so early stopping for `task = "binary"` tracked a criterion that
+  rewards over-predicting the positive class. Gradients were already
+  correct.
+
 # densemlp 0.7.1
 
 * Add `src/Makevars` / `src/Makevars.win` linking the numerical kernels
