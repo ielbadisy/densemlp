@@ -1,3 +1,12 @@
+# densemlp 0.8.1
+
+## Bug fixes
+
+* `ncores > 1` (ensembles, `cv_densemlp()`, `tune_densemlp()`) could hang
+  when R uses a threaded BLAS such as MKL or OpenBLAS: forked workers
+  deadlocked in the BLAS/OpenMP thread pool inherited from the parent. Each
+  worker now runs its BLAS on one thread (new import: `RhpcBLASctl`).
+
 # densemlp 0.8.0
 
 ## New features

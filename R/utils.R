@@ -7,7 +7,15 @@
 densemlp_parallel_lapply <- function(x, fun, ncores = 1L) {
   ncores <- max(1L, as.integer(ncores))
   if (ncores > 1L && length(x) > 1L && .Platform$OS.type == "unix") {
-    return(parallel::mclapply(x, fun, mc.cores = ncores))
+    # A forked child that enters the threaded BLAS/OpenMP pool inherited from
+    # the parent (MKL, OpenBLAS) can deadlock; each worker runs its BLAS on
+    # one thread instead (the parallelism comes from the workers).
+    worker <- function(i) {
+      RhpcBLASctl::blas_set_num_threads(1L)
+      RhpcBLASctl::omp_set_num_threads(1L)
+      fun(i)
+    }
+    return(parallel::mclapply(x, worker, mc.cores = ncores))
   }
   lapply(x, fun)
 }
