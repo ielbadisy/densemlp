@@ -12,6 +12,7 @@ cv_densemlp(
   seed = 1L,
   ncores = 1L,
   verbose = FALSE,
+  weights = NULL,
   ...
 )
 }
@@ -32,6 +33,11 @@ cv_densemlp(
 \code{\link[=densemlp]{densemlp()}}'s \code{ncores}).}
 
 \item{verbose}{Print per-fold progress.}
+
+\item{weights}{Optional non-negative case weights, one per row. Each fold
+is fitted with its training rows' weights (see \code{\link[=densemlp]{densemlp()}}) and scored
+with weighted metrics on its held-out rows (see \code{\link[=densemlp_metrics]{densemlp_metrics()}}),
+which gives importance-weighted cross-validation under covariate shift.}
 
 \item{...}{Additional arguments passed to \code{\link[=densemlp]{densemlp()}} for every fold (e.g.
 \code{hidden_units}, \code{epochs}, \code{lr}).}

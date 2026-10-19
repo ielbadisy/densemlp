@@ -13,6 +13,10 @@
 #' @param ncores Number of cores used to fit folds in parallel (see
 #'   [densemlp()]'s `ncores`).
 #' @param verbose Print per-fold progress.
+#' @param weights Optional non-negative case weights, one per row. Each fold
+#'   is fitted with its training rows' weights (see [densemlp()]) and scored
+#'   with weighted metrics on its held-out rows (see [densemlp_metrics()]),
+#'   which gives importance-weighted cross-validation under covariate shift.
 #' @param ... Additional arguments passed to [densemlp()] for every fold (e.g.
 #'   `hidden_units`, `epochs`, `lr`).
 #'
@@ -26,7 +30,8 @@
 #' cv$summary
 #' @export
 cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
-                     folds = 5L, seed = 1L, ncores = 1L, verbose = FALSE, ...) {
+                     folds = 5L, seed = 1L, ncores = 1L, verbose = FALSE,
+                     weights = NULL, ...) {
   task <- match.arg(task)
   folds <- as.integer(folds)
   if (length(folds) != 1L || is.na(folds) || folds < 2L) {
@@ -34,6 +39,9 @@ cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multicla
   }
   n <- NROW(x)
   if (folds > n) stop("`folds` cannot exceed the number of rows.", call. = FALSE)
+  if (!is.null(weights) && length(weights) != n) {
+    stop("`weights` must have one value per row.", call. = FALSE)
+  }
 
   resolved_task <- task
   if (identical(task, "auto")) {
@@ -48,7 +56,8 @@ cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multicla
     train_idx <- which(fold_id != k)
     fit <- densemlp(
       x = x[train_idx, , drop = FALSE], y = densemlp_index_outcome(y, train_idx), task = task,
-      seed = seed + k, verbose = FALSE, ...
+      seed = seed + k, verbose = FALSE,
+      weights = if (is.null(weights)) NULL else weights[train_idx], ...
     )
     truth <- densemlp_index_outcome(y, test_idx)
     newdata <- x[test_idx, , drop = FALSE]
@@ -59,7 +68,8 @@ cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multicla
       estimate <- stats::predict(fit, newdata, type = "class")
       prob <- stats::predict(fit, newdata, type = "prob")
     }
-    metrics <- densemlp_metrics(truth, estimate, fit$task, prob)
+    metrics <- densemlp_metrics(truth, estimate, fit$task, prob,
+                                weights = if (is.null(weights)) NULL else weights[test_idx])
     if (isTRUE(verbose)) {
       message(sprintf("Fold %d/%d done", k, folds))
     }

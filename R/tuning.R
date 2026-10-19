@@ -22,6 +22,9 @@
 #'   [densemlp()]'s `ncores`).
 #' @param verbose Print per-candidate progress.
 #' @param refit Refit the best configuration on the supplied data.
+#' @param weights Optional non-negative case weights, one per row, passed to
+#'   every [densemlp()] fit; candidates are then ranked by the weighted
+#'   validation loss.
 #'
 #' @return A list of class `densemlp_tuned` with `results` (one row per
 #'   candidate, ranked best first by mean validation loss), `best_config`,
@@ -38,7 +41,7 @@
 #' @export
 tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                        grid = NULL, validation = 0.2, seed = 1L, repeats = 3L,
-                       ncores = 1L, verbose = FALSE, refit = TRUE) {
+                       ncores = 1L, verbose = FALSE, refit = TRUE, weights = NULL) {
   task <- match.arg(task)
   repeats <- as.integer(repeats)
   if (length(repeats) != 1L || is.na(repeats) || repeats < 1L) {
@@ -87,7 +90,8 @@ tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multic
         residual = candidate$residual, gated = candidate$gated,
         ema_decay = candidate$ema_decay, lr_schedule = candidate$lr_schedule,
         epochs = candidate$epochs, batch_size = candidate$batch_size, lr = candidate$lr,
-        validation = validation, seed = seed + (i - 1L) * repeats + rep_idx - 1L, verbose = FALSE
+        validation = validation, seed = seed + (i - 1L) * repeats + rep_idx - 1L, verbose = FALSE,
+        weights = weights
       )
       fit$valid_history[fit$best_epoch]
     }, numeric(1))
@@ -122,7 +126,7 @@ tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multic
       residual = best_row$residual, gated = best_row$gated,
       ema_decay = best_row$ema_decay, lr_schedule = best_row$lr_schedule,
       epochs = best_row$epochs, batch_size = best_row$batch_size, lr = best_row$lr,
-      validation = validation, seed = seed, verbose = FALSE
+      validation = validation, seed = seed, verbose = FALSE, weights = weights
     )
   }
 

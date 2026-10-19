@@ -173,6 +173,7 @@ struct ForwardCache {
   mat proj_input;              // raw input, before the linear projection
   mat raw_input;               // input to the MLP proper (post-projection), pre-interaction
   vec interaction_scale;       // raw_input * interaction_W
+  vec bn_a;                    // normalized case weights for weighted BN (empty: unweighted)
 };
 
 static mat apply_projection(const MLPParams &p, const mat &X, bool use_proj) {
@@ -194,11 +195,12 @@ static mat apply_interaction(const MLPParams &p, const mat &X, bool interaction)
 static void forward_train(MLPParams &p, const mat &X, int task, bool residual,
                           bool gated, const vec &dropout, bool interaction,
                           bool batch_norm, bool use_proj, const OutputTerms &terms,
-                          ForwardCache &c) {
+                          ForwardCache &c, const vec &bn_a) {
   size_t n_layers = p.W.size();
   size_t n_hidden = n_layers - 1;
   c.A.clear(); c.Z.clear(); c.Zbn.clear(); c.batch_mean.clear(); c.batch_var.clear(); c.Xhat.clear();
   c.H.clear(); c.Gate.clear(); c.DropMask.clear();
+  c.bn_a = bn_a;
   c.proj_input = X;
   mat Xin = apply_projection(p, X, use_proj);
   c.raw_input = Xin;
@@ -210,8 +212,15 @@ static void forward_train(MLPParams &p, const mat &X, int task, bool residual,
     z.each_row() += p.B[l].t();
     mat zbn;
     if (batch_norm) {
-      rowvec bmean = arma::mean(z, 0);
-      rowvec bvar = arma::var(z, 1, 0); // population variance (divide by n)
+      rowvec bmean, bvar;
+      if (bn_a.is_empty()) {
+        bmean = arma::mean(z, 0);
+        bvar = arma::var(z, 1, 0); // population variance (divide by n)
+      } else {
+        // Case-weighted batch statistics: bn_a sums to one over the batch.
+        bmean = bn_a.t() * z;
+        bvar = bn_a.t() * arma::square(z.each_row() - bmean);
+      }
       rowvec bstd = arma::sqrt(bvar + BN_EPS);
       mat xhat = z.each_row() - bmean;
       xhat.each_row() /= bstd;
@@ -319,7 +328,12 @@ static mat forward_eval(const MLPParams &p, const mat &X, int task, bool residua
 // Writes the per-observation gradient into `grad_eta` (original order) and
 // returns the scalar loss. If the batch has no events, the loss and
 // gradient are both zero (Cox contributes nothing to learn from).
-static double cox_loss_and_grad(const vec &eta, const vec &time, const vec &event, vec &grad_eta) {
+static double cox_loss_and_grad_weighted(const vec &eta, const vec &time, const vec &event,
+                                        const vec &w, vec &grad_eta);
+
+static double cox_loss_and_grad(const vec &eta, const vec &time, const vec &event, vec &grad_eta,
+                                const vec &w = vec()) {
+  if (!w.is_empty()) return cox_loss_and_grad_weighted(eta, time, event, w, grad_eta);
   uword n = eta.n_elem;
   uvec order = arma::sort_index(time, "descend");
   vec eta_s = eta(order);
@@ -347,6 +361,44 @@ static double cox_loss_and_grad(const vec &eta, const vec &time, const vec &even
   return loss;
 }
 
+// Case-weighted version (weighted Breslow partial likelihood): each event
+// term is multiplied by its weight w_i, risk-set sums become
+// sum_j w_j exp(eta_j), and the loss is normalized by the weighted event
+// count. Zero-weight rows contribute nothing.
+static double cox_loss_and_grad_weighted(const vec &eta, const vec &time, const vec &event,
+                                        const vec &w, vec &grad_eta) {
+  uword n = eta.n_elem;
+  uvec order = arma::sort_index(time, "descend");
+  vec eta_s = eta(order);
+  vec w_s = w(order);
+  vec ev_w = event(order) % w_s;
+  double total = arma::accu(ev_w);
+  grad_eta = arma::zeros(n);
+  if (!(total > 0.0)) return 0.0;
+
+  double eta_max = eta_s.max();
+  vec r = w_s % arma::exp(eta_s - eta_max);
+  vec cumsum_r = arma::cumsum(r);
+
+  double loss = 0.0;
+  vec term(n, fill::zeros);
+  for (uword i = 0; i < n; ++i) {
+    if (ev_w[i] > 0.0) {
+      loss -= ev_w[i] * (eta_s[i] - (std::log(cumsum_r[i]) + eta_max));
+      term[i] = ev_w[i] / cumsum_r[i];
+    }
+  }
+  vec rev_cumsum(n);
+  double running = 0.0;
+  for (int i = (int)n - 1; i >= 0; --i) {
+    running += term[(uword)i];
+    rev_cumsum[(uword)i] = running;
+  }
+  vec grad_s = (r % rev_cumsum - ev_w) / total;
+  grad_eta(order) = grad_s;
+  return loss / total;
+}
+
 // IPCW (Graf et al.) integrated Brier score and its gradient with respect
 // to the K per-bin hazard logits Z, for a discrete-time survival head:
 //   h_k = sigmoid(Z_k)            per-bin conditional hazard
@@ -367,8 +419,14 @@ static double cox_loss_and_grad(const vec &eta, const vec &time, const vec &even
 //   dS_k/dZ_m = -S_k * h_m   (m <= k, 0 otherwise)
 // and dLoss/dZ_m accumulates that contribution across every k >= m.
 static double brier_loss_and_grad(const mat &Z, const mat &Y, const vec &breaks,
-                                  const vec &ghat_grid, mat &grad_Z) {
+                                  const vec &ghat_grid, mat &grad_Z,
+                                  const vec &cw = vec(), double denom = 0.0) {
   uword n = Z.n_rows, K = Z.n_cols;
+  // Case weights multiply each row's IPCW term; `denom` replaces n (the
+  // training loop passes the batch size with weights of mean one, the
+  // validation loss passes the weight total).
+  bool weighted = !cw.is_empty();
+  double dn = weighted ? denom : (double)n;
   const double eps = 1e-8;
   mat H = sigmoid(Z);
   mat S(n, K);
@@ -391,18 +449,20 @@ static double brier_loss_and_grad(const mat &Z, const mat &Y, const vec &breaks,
       double Ski = S(i, k);
       if (time(i) <= breaks(k) && event(i) == 1.0) {
         double w = 1.0 / std::max(ghat_time(i), eps);
+        if (weighted) w *= cw(i);
         bs_k += w * Ski * Ski;
         A(i) = 2.0 * w * Ski;
       } else if (time(i) > breaks(k)) {
         double w = 1.0 / std::max(ghat_grid(k), eps);
+        if (weighted) w *= cw(i);
         bs_k += w * (1.0 - Ski) * (1.0 - Ski);
         A(i) = -2.0 * w * (1.0 - Ski);
       }
     }
-    total_loss += bs_k / (double)n;
+    total_loss += bs_k / dn;
 
     for (uword i = 0; i < n; ++i) {
-      double contrib = A(i) * S(i, k) / ((double)n * (double)K);
+      double contrib = A(i) * S(i, k) / (dn * (double)K);
       for (uword m = 0; m <= k; ++m) {
         grad_Z(i, m) += -H(i, m) * contrib;
       }
@@ -416,7 +476,25 @@ static double brier_loss_and_grad(const mat &Z, const mat &Y, const vec &breaks,
 // a constant (4). Task 1 also accepts proportions in [0, 1]. The binary case needs both terms of
 // the Bernoulli log-likelihood; the categorical form alone would only
 // score the positive class.
-static double task_loss(const mat &yhat, const mat &Y, int task) {
+static double task_loss(const mat &yhat, const mat &Y, int task,
+                        const vec &w = vec(), double denom = 0.0) {
+  if (!w.is_empty()) {
+    // Case-weighted: sum_i w_i * loss_i / denom.
+    mat per;
+    if (task == 0) {
+      per = arma::square(yhat - Y);
+    } else if (task == 4) {
+      per = yhat - Y % arma::log(arma::clamp(yhat, 1e-12, arma::datum::inf));
+    } else {
+      mat clipped = arma::clamp(yhat, 1e-9, 1.0 - 1e-9);
+      if (task == 1) {
+        per = -(Y % arma::log(clipped) + (1.0 - Y) % arma::log(1.0 - clipped));
+      } else {
+        per = -(Y % arma::log(clipped));
+      }
+    }
+    return arma::dot(w, arma::sum(per, 1)) / denom;
+  }
   double n = (double)Y.n_rows;
   if (task == 0) return arma::accu(arma::square(yhat - Y)) / n;
   if (task == 4) {
@@ -432,21 +510,24 @@ static double task_loss(const mat &yhat, const mat &Y, int task) {
 static double eval_loss(const MLPParams &p, const mat &X, const mat &Y, int task,
                         bool residual, bool gated, bool interaction, bool batch_norm,
                         bool use_proj, int survival_loss,
-                        const vec &breaks, const vec &ghat_grid, const OutputTerms &terms) {
+                        const vec &breaks, const vec &ghat_grid, const OutputTerms &terms,
+                        const vec &w = vec()) {
   mat yhat = forward_eval(p, X, task, residual, gated, interaction, batch_norm, use_proj,
                           terms);
+  double denom = w.is_empty() ? 0.0 : arma::accu(w);
   if (task == 3) {
     if (survival_loss == 1) {
       mat grad_unused;
-      return brier_loss_and_grad(yhat, Y, breaks, ghat_grid, grad_unused);
+      return brier_loss_and_grad(yhat, Y, breaks, ghat_grid, grad_unused, w, denom);
     }
     vec grad_unused;
-    return cox_loss_and_grad(yhat.col(0), Y.col(0), Y.col(1), grad_unused);
+    return cox_loss_and_grad(yhat.col(0), Y.col(0), Y.col(1), grad_unused, w);
   }
-  return task_loss(yhat, Y, task);
+  return task_loss(yhat, Y, task, w, denom);
 }
 
-// Backpropagates dZ_out = (yhat - Y)/n through the whole network, applying
+// Backpropagates dZ_out = w * (yhat - Y)/n (w = case weights, one when
+// unweighted) through the whole network, applying
 // Adam updates to every parameter tensor (W, B, BN gamma/beta for hidden
 // layers when BN is on, the residual/gate/interaction params, and the
 // linear input projection) in place.
@@ -521,7 +602,8 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
                                  const vec &dropout, bool interaction, bool batch_norm,
                                  bool use_proj, int survival_loss,
                                  const vec &breaks, const vec &ghat_grid,
-                                 const OutputTerms &terms, const vec &group_penalty) {
+                                 const OutputTerms &terms, const vec &group_penalty,
+                                 const vec &wb) {
   size_t n_hidden = p.gamma.size();
   double nb = (double)c.A[0].n_rows;
 
@@ -531,13 +613,14 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
 
   mat dZ;
   if (task == 3 && survival_loss == 1) {
-    brier_loss_and_grad(c.A.back(), Y, breaks, ghat_grid, dZ);
+    brier_loss_and_grad(c.A.back(), Y, breaks, ghat_grid, dZ, wb, nb);
   } else if (task == 3) {
     vec grad_eta;
-    cox_loss_and_grad(c.A.back().col(0), Y.col(0), Y.col(1), grad_eta);
+    cox_loss_and_grad(c.A.back().col(0), Y.col(0), Y.col(1), grad_eta, wb);
     dZ = grad_eta;
   } else {
     dZ = (c.A.back() - Y) / nb; // output layer gradient (shared simplification)
+    if (!wb.is_empty()) dZ.each_col() %= wb; // case weights (mean one over training rows)
   }
 
   // Group intercepts: sum dZ_out over each level's rows, plus the gradient
@@ -596,12 +679,24 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
 
       rowvec inv_var_pow = arma::pow(c.batch_var[l] + BN_EPS, -1.5);
       rowvec dvar = (arma::sum(dxhat % centered, 0) * (-0.5)) % inv_var_pow;
-      rowvec mean_neg2centered = arma::mean(centered, 0) * (-2.0);
-      rowvec dmean = arma::sum(dxhat.each_row() / (-std_l), 0) + (dvar % mean_neg2centered);
+      if (c.bn_a.is_empty()) {
+        rowvec mean_neg2centered = arma::mean(centered, 0) * (-2.0);
+        rowvec dmean = arma::sum(dxhat.each_row() / (-std_l), 0) + (dvar % mean_neg2centered);
 
-      dZlin = dxhat.each_row() / std_l;
-      dZlin += centered.each_row() % (2.0 / nb * dvar);
-      dZlin.each_row() += dmean / nb;
+        dZlin = dxhat.each_row() / std_l;
+        dZlin += centered.each_row() % (2.0 / nb * dvar);
+        dZlin.each_row() += dmean / nb;
+      } else {
+        // Weighted BN: mean = sum_i a_i z_i, var = sum_i a_i (z_i - mean)^2,
+        // so the 1/nb factors of the unweighted case become a_i.
+        rowvec mean_neg2centered = (c.bn_a.t() * centered) * (-2.0);
+        rowvec dmean = arma::sum(dxhat.each_row() / (-std_l), 0) + (dvar % mean_neg2centered);
+        mat dvar_term = centered.each_row() % (2.0 * dvar);
+        dvar_term.each_col() %= c.bn_a;
+        dZlin = dxhat.each_row() / std_l;
+        dZlin += dvar_term;
+        dZlin += c.bn_a * dmean;
+      }
     } else {
       dZlin = dZbn;
     }
@@ -744,7 +839,8 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
                         int survival_loss, Rcpp::NumericVector breaks_in, Rcpp::NumericVector ghat_grid_in,
                         const arma::mat &offset, Rcpp::List group_codes,
                         Rcpp::IntegerVector group_levels, arma::vec group_penalty,
-                        Rcpp::IntegerVector valid_rows) {
+                        Rcpp::IntegerVector valid_rows,
+                        const arma::vec &case_weights) {
   vec breaks = as<vec>(breaks_in);
   vec ghat_grid = as<vec>(ghat_grid_in);
   bool use_proj = input_projection > 0;
@@ -791,6 +887,21 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
     train_idx = arma::conv_to<uvec>::from(arma::regspace(0, n - 1));
   }
   mat X_train = X.rows(train_idx), Y_train = Y.rows(train_idx);
+  // Case weights (empty: unweighted). Training weights are rescaled to mean
+  // one so the learning rate keeps its unweighted meaning; the validation
+  // loss is a weighted mean.
+  bool use_weights = !case_weights.is_empty();
+  vec w_train, w_valid;
+  if (use_weights) {
+    w_train = case_weights(train_idx);
+    double w_total = arma::accu(w_train);
+    if (!(w_total > 0.0)) Rcpp::stop("The training rows all have zero weight.");
+    w_train *= (double)train_idx.n_elem / w_total;
+    if (has_validation) {
+      w_valid = case_weights(valid_idx);
+      if (!(arma::accu(w_valid) > 0.0)) Rcpp::stop("The validation rows all have zero weight.");
+    }
+  }
   OutputTerms terms_train = subset_terms(terms, train_idx);
   OutputTerms terms_valid = has_validation ? subset_terms(terms, valid_idx) : OutputTerms();
   uword n_train = X_train.n_rows;
@@ -816,24 +927,31 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       mat Xb = X_train.rows(idx);
       mat Yb = Y_train.rows(idx);
       OutputTerms terms_b = subset_terms(terms_train, idx);
+      vec wb, bn_a;
+      if (use_weights) {
+        wb = w_train(idx);
+        double wb_total = arma::accu(wb);
+        if (batch_norm && wb_total > 0.0) bn_a = wb / wb_total;
+      }
+      double nb = (double)idx.n_elem;
 
       ForwardCache cache;
       forward_train(params, Xb, task, residual, gated, dropout_vec, interaction,
-                    batch_norm, use_proj, terms_b, cache);
+                    batch_norm, use_proj, terms_b, cache, bn_a);
       mat yhat = cache.A.back();
       if (task == 3 && survival_loss == 1) {
         mat grad_unused;
-        epoch_loss += brier_loss_and_grad(yhat, Yb, breaks, ghat_grid, grad_unused);
+        epoch_loss += brier_loss_and_grad(yhat, Yb, breaks, ghat_grid, grad_unused, wb, nb);
       } else if (task == 3) {
         vec grad_unused;
-        epoch_loss += cox_loss_and_grad(yhat.col(0), Yb.col(0), Yb.col(1), grad_unused);
+        epoch_loss += cox_loss_and_grad(yhat.col(0), Yb.col(0), Yb.col(1), grad_unused, wb);
       } else {
-        epoch_loss += task_loss(yhat, Yb, task);
+        epoch_loss += task_loss(yhat, Yb, task, wb, nb);
       }
       n_batches++;
       backward_and_update(params, adam, cache, Yb, current_lr, task, residual, gated,
                           dropout_vec, interaction, batch_norm, use_proj,
-                          survival_loss, breaks, ghat_grid, terms_b, group_penalty);
+                          survival_loss, breaks, ghat_grid, terms_b, group_penalty, wb);
       if (ema_decay > 0.0) update_ema(ema_params, params, ema_decay);
     }
 
@@ -843,7 +961,7 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       const MLPParams &eval_params = ema_decay > 0.0 ? ema_params : params;
       double vloss = eval_loss(eval_params, X.rows(valid_idx), Y.rows(valid_idx), task,
                                residual, gated, interaction, batch_norm, use_proj,
-                               survival_loss, breaks, ghat_grid, terms_valid);
+                               survival_loss, breaks, ghat_grid, terms_valid, w_valid);
       valid_history[epoch] = vloss;
       if (vloss < best_loss - min_delta) {
         best_loss = vloss; best_epoch = epoch + 1; wait = 0;

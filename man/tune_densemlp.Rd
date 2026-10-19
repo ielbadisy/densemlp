@@ -14,7 +14,8 @@ tune_densemlp(
   repeats = 3L,
   ncores = 1L,
   verbose = FALSE,
-  refit = TRUE
+  refit = TRUE,
+  weights = NULL
 )
 }
 \arguments{
@@ -44,6 +45,10 @@ small/wide data (see package NEWS) and is left at \code{FALSE}.}
 \item{verbose}{Print per-candidate progress.}
 
 \item{refit}{Refit the best configuration on the supplied data.}
+
+\item{weights}{Optional non-negative case weights, one per row, passed to
+every \code{\link[=densemlp]{densemlp()}} fit; candidates are then ranked by the weighted
+validation loss.}
 }
 \value{
 A list of class \code{densemlp_tuned} with \code{results} (one row per

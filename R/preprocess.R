@@ -24,9 +24,18 @@ densemlp_as_time_event_matrix <- function(y) {
 # times, deduplicated and sorted ascending. Always includes the maximum
 # observed time as the last breakpoint so every subject's risk set is fully
 # resolved by the final bin.
-densemlp_time_grid <- function(time, n_bins) {
+densemlp_time_grid <- function(time, n_bins, w = NULL) {
   probs <- seq(1 / n_bins, 1, length.out = n_bins)
-  breaks <- unique(stats::quantile(time, probs = probs, names = FALSE, type = 1))
+  if (is.null(w)) {
+    breaks <- unique(stats::quantile(time, probs = probs, names = FALSE, type = 1))
+  } else {
+    # Weighted inverse ECDF (quantile type 1): the smallest time whose
+    # weighted cumulative share reaches each probability.
+    ord <- order(time)
+    share <- cumsum(w[ord]) / sum(w)
+    pick <- vapply(probs, function(p) which(share >= p - 1e-12)[1L], integer(1))
+    breaks <- unique(time[ord][pick])
+  }
   breaks <- sort(unique(c(breaks, max(time))))
   breaks
 }
@@ -37,19 +46,26 @@ densemlp_time_grid <- function(time, n_bins) {
 # (needed only for subjects with event = 1, as the IPCW weight for the
 # Brier score's event term). Returns a right-continuous step function value
 # (last drop at or before the query time; 1 for times before the first
-# observed censoring).
-densemlp_censoring_km <- function(time, event, breaks) {
+# observed censoring). With case weights `w`, at-risk and censoring counts
+# are weighted sums.
+densemlp_censoring_km <- function(time, event, breaks, w = NULL) {
   ord <- order(time)
   t_sorted <- time[ord]
   cens_sorted <- 1 - event[ord]
+  w_sorted <- if (is.null(w)) NULL else w[ord]
   distinct_times <- unique(t_sorted)
   n <- length(time)
   surv <- numeric(length(distinct_times))
   s <- 1
   for (i in seq_along(distinct_times)) {
     ti <- distinct_times[i]
-    n_at_risk <- sum(t_sorted >= ti)
-    n_cens_events <- sum(t_sorted == ti & cens_sorted == 1)
+    if (is.null(w_sorted)) {
+      n_at_risk <- sum(t_sorted >= ti)
+      n_cens_events <- sum(t_sorted == ti & cens_sorted == 1)
+    } else {
+      n_at_risk <- sum(w_sorted[t_sorted >= ti])
+      n_cens_events <- sum(w_sorted[t_sorted == ti & cens_sorted == 1])
+    }
     if (n_at_risk > 0) s <- s * (1 - n_cens_events / n_at_risk)
     surv[i] <- s
   }
@@ -77,7 +93,16 @@ densemlp_index_outcome <- function(y, index) {
   }
 }
 
-densemlp_train_blueprint <- function(x) {
+# Weighted mean and sd. `w` is rescaled to mean one by densemlp(), so the
+# denominator is n - 1 as for stats::sd().
+densemlp_weighted_moments <- function(values, w) {
+  total <- sum(w)
+  center <- sum(w * values) / total
+  denom <- if (total > 1) total - 1 else total
+  list(center = center, scale = sqrt(sum(w * (values - center)^2) / denom))
+}
+
+densemlp_train_blueprint <- function(x, w = NULL) {
   x <- as.data.frame(x, stringsAsFactors = FALSE)
   for (nm in names(x)) {
     if (is.character(x[[nm]])) x[[nm]] <- factor(x[[nm]])
@@ -91,9 +116,16 @@ densemlp_train_blueprint <- function(x) {
     impute <- stats::median(values, na.rm = TRUE)
     if (!is.finite(impute)) impute <- 0
     values[is.na(values)] <- impute
-    scale <- stats::sd(values)
+    if (is.null(w)) {
+      center <- mean(values)
+      scale <- stats::sd(values)
+    } else {
+      moments <- densemlp_weighted_moments(values, w)
+      center <- moments$center
+      scale <- moments$scale
+    }
     if (!is.finite(scale) || scale == 0) scale <- 1
-    numeric_info[[nm]] <- list(impute = impute, center = mean(values), scale = scale)
+    numeric_info[[nm]] <- list(impute = impute, center = center, scale = scale)
   }
 
   categorical_info <- list()

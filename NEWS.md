@@ -1,3 +1,24 @@
+# densemlp 0.9.0
+
+## New features
+
+* `weights` argument in `densemlp()`: non-negative case weights, one per
+  row, so the network minimizes a weighted empirical risk (importance
+  weights under covariate shift, survey or inverse-probability weights).
+  Only relative weights matter. Weights enter the loss and gradient of
+  every task (a weighted Breslow partial likelihood for Cox, a weighted
+  IPCW Brier score with a weighted censoring Kaplan-Meier and time grid),
+  the batch-normalization statistics, the input and outcome
+  standardization, and the validation loss used for early stopping.
+  Unweighted fits are unchanged.
+* `weights` argument in `densemlp_metrics()`: weighted versions of every
+  metric (weighted AUC and C-index count each pair as the product of its
+  weights).
+* `weights` argument in `cv_densemlp()` (folds are fitted with their
+  training weights and scored with weighted metrics, i.e.
+  importance-weighted cross-validation) and `tune_densemlp()` (candidates
+  ranked by the weighted validation loss).
+
 # densemlp 0.8.1
 
 ## Bug fixes

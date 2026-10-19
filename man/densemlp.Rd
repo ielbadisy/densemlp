@@ -37,7 +37,8 @@ densemlp(
   data = NULL,
   offset = NULL,
   groups = NULL,
-  group_penalty = 0
+  group_penalty = 0,
+  weights = NULL
 )
 
 \method{print}{densemlp}(x, ...)
@@ -166,6 +167,23 @@ added to each mini-batch loss as \code{group_penalty} times the mean squared
 intercept of each grouping factor. Either one value for all grouping
 factors or one value per factor. \code{0} (default) leaves them unpenalized.}
 
+\item{weights}{Optional non-negative case weights, one per row. Each row's
+contribution to the loss (training and validation) is multiplied by its
+weight, so the network minimizes a weighted empirical risk (only
+relative weights matter: \code{weights} and \code{c * weights} give the same fit),
+for example
+importance weights \code{p_target(x) / p_train(x)} under covariate shift,
+survey weights, or inverse-probability weights. Training weights are
+rescaled to mean one (the learning rate keeps its meaning), batch
+normalization uses weighted batch statistics, the validation loss used
+for early stopping is a weighted mean, and survival uses a weighted
+Breslow partial likelihood or a weighted IPCW Brier score (with a
+weighted Kaplan-Meier censoring estimate). Numeric inputs (and a
+regression outcome) are standardized with weighted means and standard
+deviations, so integer weights behave like repeated rows (up to the
+\code{n - 1} denominator of the standard deviations). Rows with
+weight \code{0} do not contribute. \code{NULL} (default) fits unweighted.}
+
 \item{...}{Unused.}
 }
 \value{
@@ -196,8 +214,8 @@ sigmoid (binary, binary cross-entropy), softmax (multiclass, categorical
 cross-entropy), exponential (count, Poisson log-likelihood), or a linear
 risk score (survival, Cox partial likelihood); the first four share the
 output-gradient simplification
-\code{dZ = (yhat - y) / n}, while survival uses its own closed-form Cox
-gradient (see the "Survival" section below). With \code{validation > 0} and
+\code{dZ = (yhat - y) / n} (times the case weight when \code{weights} is given),
+while survival uses its own closed-form Cox gradient (see the "Survival" section below). With \code{validation > 0} and
 \code{early_stopping = TRUE} (both on by default), the parameters (weights,
 biases, and BN affine/running-stat parameters) from the best validation
 epoch are restored at the end.

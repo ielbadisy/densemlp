@@ -2,7 +2,8 @@
 # ordered (time, risk-score) pairs among all comparable pairs. A pair
 # (i, j) is comparable when the earlier time is an event; a higher risk
 # score should predict a shorter survival time.
-concordance_index <- function(time, event, risk) {
+# With case weights `w`, each pair counts w_i * w_j.
+concordance_index <- function(time, event, risk, w = NULL) {
   n <- length(time)
   concordant <- 0
   comparable <- 0
@@ -11,8 +12,14 @@ concordance_index <- function(time, event, risk) {
     later <- which(time > time[i] | (time == time[i] & event == 0))
     later <- later[later != i]
     if (length(later) == 0L) next
-    comparable <- comparable + length(later)
-    concordant <- concordant + sum(risk[i] > risk[later]) + 0.5 * sum(risk[i] == risk[later])
+    if (is.null(w)) {
+      comparable <- comparable + length(later)
+      concordant <- concordant + sum(risk[i] > risk[later]) + 0.5 * sum(risk[i] == risk[later])
+    } else {
+      wp <- w[i] * w[later]
+      comparable <- comparable + sum(wp)
+      concordant <- concordant + sum(wp * ((risk[i] > risk[later]) + 0.5 * (risk[i] == risk[later])))
+    }
   }
   if (comparable == 0L) return(NA_real_)
   concordant / comparable
@@ -68,12 +75,24 @@ densemlp_integrated_brier_score <- function(object, newdata, y) {
 #'   `"count"` (scored like regression).
 #' @param prob Optional matrix of class probabilities (classification only),
 #'   used to compute `macro_auc` and `log_loss`.
+#' @param weights Optional non-negative case weights, one per observation.
+#'   When given, every metric is its weighted version (weighted means,
+#'   weighted AUC and concordance counting each pair as the product of its
+#'   two weights), e.g. an importance-weighted estimate of target-population
+#'   performance under covariate shift.
 #'
 #' @return A named list of metrics: `rmse`, `nrmse`, `rsq` for regression,
 #'   `accuracy`, `balanced_accuracy`, `macro_auc`, `log_loss` for
 #'   classification, or `concordance` (Harrell's C-index) for survival.
 #' @export
-densemlp_metrics <- function(truth, estimate, task, prob = NULL) {
+densemlp_metrics <- function(truth, estimate, task, prob = NULL, weights = NULL) {
+  if (!is.null(weights)) {
+    if (!is.numeric(weights) || length(weights) != NROW(truth) ||
+        any(!is.finite(weights)) || any(weights < 0) || !any(weights > 0)) {
+      stop("`weights` must be finite, non-negative numbers, one per observation, not all zero.", call. = FALSE)
+    }
+    return(densemlp_weighted_metrics(truth, estimate, task, prob, as.numeric(weights)))
+  }
   if (identical(task, "survival")) {
     te <- densemlp_as_time_event_matrix(truth)
     return(list(concordance = concordance_index(te[, 1], te[, 2], as.numeric(estimate))))
@@ -115,6 +134,67 @@ densemlp_metrics <- function(truth, estimate, task, prob = NULL) {
     }, numeric(1)), na.rm = TRUE)
     selected <- prob[cbind(seq_along(truth), as.integer(truth))]
     log_loss <- -mean(log(pmax(selected, 1e-12)))
+  }
+
+  list(
+    accuracy = accuracy,
+    balanced_accuracy = balanced_accuracy,
+    macro_auc = macro_auc,
+    log_loss = log_loss
+  )
+}
+
+# Weighted counterparts of densemlp_metrics(), used when `weights` is given.
+densemlp_weighted_metrics <- function(truth, estimate, task, prob, w) {
+  wmean <- function(v) sum(w * v) / sum(w)
+  if (identical(task, "survival")) {
+    te <- densemlp_as_time_event_matrix(truth)
+    return(list(concordance = concordance_index(te[, 1], te[, 2], as.numeric(estimate), w)))
+  }
+  if (task %in% c("regression", "count")) {
+    truth <- as.numeric(truth)
+    estimate <- as.numeric(estimate)
+    rmse <- sqrt(wmean((estimate - truth)^2))
+    sd_truth <- sqrt(wmean((truth - wmean(truth))^2))
+    return(list(
+      rmse = rmse,
+      nrmse = if (sd_truth > 0) rmse / sd_truth else NA_real_,
+      rsq = 1 - sum(w * (truth - estimate)^2) / sum(w * (truth - wmean(truth))^2)
+    ))
+  }
+
+  truth <- factor(truth)
+  estimate <- factor(estimate, levels = levels(truth))
+  accuracy <- wmean(estimate == truth)
+  recall <- vapply(levels(truth), function(level) {
+    idx <- truth == level
+    if (!any(w[idx] > 0)) return(NA_real_)
+    sum(w[idx] * (estimate[idx] == level)) / sum(w[idx])
+  }, numeric(1))
+  balanced_accuracy <- mean(recall, na.rm = TRUE)
+
+  macro_auc <- NA_real_
+  log_loss <- NA_real_
+  if (!is.null(prob)) {
+    prob <- prob[, levels(truth), drop = FALSE]
+    # Weighted Mann-Whitney AUC: pairs (positive, negative) weighted w_i * w_j,
+    # ties count one half; computed per distinct score value.
+    auc_binary <- function(p, truth01) {
+      w1 <- ifelse(truth01 == 1L, w, 0)
+      w0 <- ifelse(truth01 == 0L, w, 0)
+      if (sum(w1) == 0 || sum(w0) == 0) return(NA_real_)
+      key <- sort(unique(p))
+      g <- match(p, key)
+      pos <- tapply(w1, factor(g, levels = seq_along(key)), sum, default = 0)
+      neg <- tapply(w0, factor(g, levels = seq_along(key)), sum, default = 0)
+      neg_below <- cumsum(neg) - neg
+      sum(pos * (neg_below + 0.5 * neg)) / (sum(w1) * sum(w0))
+    }
+    macro_auc <- mean(vapply(seq_along(levels(truth)), function(k) {
+      auc_binary(prob[, k], as.integer(truth == levels(truth)[k]))
+    }, numeric(1)), na.rm = TRUE)
+    selected <- prob[cbind(seq_along(truth), as.integer(truth))]
+    log_loss <- -wmean(log(pmax(selected, 1e-12)))
   }
 
   list(

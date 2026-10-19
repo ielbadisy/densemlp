@@ -1,6 +1,6 @@
 Package: densemlp
 Title: Dense Neural Networks for Tabular Regression, Classification and Survival
-Version: 0.8.1
+Version: 0.9.0
 Authors@R:
     person("Imad", "El Badisy", email = "elbadisyimad@gmail.com", role = c("aut", "cre"))
 Description: Dense feed-forward neural networks (multilayer perceptrons)
@@ -8,7 +8,8 @@ Description: Dense feed-forward neural networks (multilayer perceptrons)
     formula or x/y interface. Supports residual and gated hidden blocks,
     batch normalization, per-layer dropout, learned cross-feature
     interactions, exponential moving-average weights, learning-rate
-    schedules, internal bootstrap ensembles and Adam optimization. Survival
+    schedules, internal bootstrap ensembles, case weights (for example
+    importance weights under covariate shift) and Adam optimization. Survival
     outcomes are trained with either a batch-wise Breslow-tie Cox partial
     likelihood or a discrete-time inverse-probability-of-censoring-weighted
     integrated Brier score. The numerical kernels are implemented natively

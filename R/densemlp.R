@@ -96,6 +96,22 @@
 #'   added to each mini-batch loss as `group_penalty` times the mean squared
 #'   intercept of each grouping factor. Either one value for all grouping
 #'   factors or one value per factor. `0` (default) leaves them unpenalized.
+#' @param weights Optional non-negative case weights, one per row. Each row's
+#'   contribution to the loss (training and validation) is multiplied by its
+#'   weight, so the network minimizes a weighted empirical risk (only
+#'   relative weights matter: `weights` and `c * weights` give the same fit),
+#'   for example
+#'   importance weights `p_target(x) / p_train(x)` under covariate shift,
+#'   survey weights, or inverse-probability weights. Training weights are
+#'   rescaled to mean one (the learning rate keeps its meaning), batch
+#'   normalization uses weighted batch statistics, the validation loss used
+#'   for early stopping is a weighted mean, and survival uses a weighted
+#'   Breslow partial likelihood or a weighted IPCW Brier score (with a
+#'   weighted Kaplan-Meier censoring estimate). Numeric inputs (and a
+#'   regression outcome) are standardized with weighted means and standard
+#'   deviations, so integer weights behave like repeated rows (up to the
+#'   `n - 1` denominator of the standard deviations). Rows with
+#'   weight `0` do not contribute. `NULL` (default) fits unweighted.
 #'
 #' @details
 #' Hidden layers are `Linear -> BatchNorm -> ReLU -> optional gate -> optional
@@ -117,8 +133,8 @@
 #' cross-entropy), exponential (count, Poisson log-likelihood), or a linear
 #' risk score (survival, Cox partial likelihood); the first four share the
 #' output-gradient simplification
-#' `dZ = (yhat - y) / n`, while survival uses its own closed-form Cox
-#' gradient (see the "Survival" section below). With `validation > 0` and
+#' `dZ = (yhat - y) / n` (times the case weight when `weights` is given),
+#' while survival uses its own closed-form Cox gradient (see the "Survival" section below). With `validation > 0` and
 #' `early_stopping = TRUE` (both on by default), the parameters (weights,
 #' biases, and BN affine/running-stat parameters) from the best validation
 #' epoch are restored at the end.
@@ -187,7 +203,8 @@ densemlp <- function(x = NULL, y = NULL,
                      lr_schedule = c("none", "cosine", "step"),
                      seed = 1L, verbose = FALSE, ncores = 1L,
                      formula = NULL, data = NULL,
-                     offset = NULL, groups = NULL, group_penalty = 0) {
+                     offset = NULL, groups = NULL, group_penalty = 0,
+                     weights = NULL) {
   task <- match.arg(task)
   loss <- match.arg(loss)
   lr_schedule <- match.arg(lr_schedule)
@@ -308,6 +325,15 @@ densemlp <- function(x = NULL, y = NULL,
     stop("`n_bins` must be an integer >= 2.", call. = FALSE)
   }
   if (NROW(x) != NROW(y)) stop("`x` and `y` must have the same number of rows.", call. = FALSE)
+  if (!is.null(weights)) {
+    if (!is.numeric(weights) || length(weights) != NROW(y) ||
+        any(!is.finite(weights)) || any(weights < 0)) {
+      stop("`weights` must be finite, non-negative numbers, one per row.", call. = FALSE)
+    }
+    if (!any(weights > 0)) stop("`weights` must contain at least one positive value.", call. = FALSE)
+    # Only relative weights matter: `weights` and `c * weights` give the same fit.
+    weights <- as.numeric(weights) / mean(weights)
+  }
 
   if (ensemble > 1L) {
     x_members <- as.data.frame(x, stringsAsFactors = FALSE)
@@ -340,6 +366,7 @@ densemlp <- function(x = NULL, y = NULL,
         offset = if (is.null(offset)) NULL else as.matrix(offset)[index, , drop = FALSE],
         groups = if (is.null(groups)) NULL else lapply(groups, `[`, index),
         group_penalty = group_penalty,
+        weights = if (is.null(weights)) NULL else weights[index],
         loss = loss, n_bins = n_bins,
         hidden_units = hidden_units, epochs = epochs, batch_size = batch_size,
         lr = lr, validation = validation, early_stopping = early_stopping,
@@ -356,6 +383,7 @@ densemlp <- function(x = NULL, y = NULL,
       call = match.call(), members = members, ensemble = as.integer(ensemble),
       ensemble_bootstrap = isTRUE(ensemble_bootstrap), task = task, loss = loss,
       has_offset = !is.null(offset), group_names = names(groups),
+      has_weights = !is.null(weights),
       outcome_name = outcome_name,
       task_code = members[[1L]]$task_code, levels = members[[1L]]$levels,
       hidden_units = as.integer(hidden_units), epochs = as.integer(epochs),
@@ -371,7 +399,7 @@ densemlp <- function(x = NULL, y = NULL,
     return(out)
   }
 
-  blueprint <- densemlp_train_blueprint(x)
+  blueprint <- densemlp_train_blueprint(x, weights)
   xmat <- densemlp_apply_blueprint(blueprint, x)
 
   task_code <- switch(task, regression = 0L, binary = 1L, multiclass = 2L, survival = 3L, count = 4L)
@@ -382,8 +410,14 @@ densemlp <- function(x = NULL, y = NULL,
 
   if (task_code == 0L) {
     y_num <- as.numeric(y)
-    y_center <- mean(y_num)
-    y_scale <- stats::sd(y_num)
+    if (is.null(weights)) {
+      y_center <- mean(y_num)
+      y_scale <- stats::sd(y_num)
+    } else {
+      moments <- densemlp_weighted_moments(y_num, weights)
+      y_center <- moments$center
+      y_scale <- moments$scale
+    }
     if (!is.finite(y_scale) || y_scale == 0) y_scale <- 1
     ymat <- matrix((y_num - y_center) / y_scale, ncol = 1)
   } else if (task_code == 1L && is.numeric(y) && !all(y %in% c(0, 1))) {
@@ -426,9 +460,9 @@ densemlp <- function(x = NULL, y = NULL,
       output_dim <- 1L
     } else {
       survival_loss_code <- 1L
-      breaks <- densemlp_time_grid(time_event[, 1], as.integer(n_bins))
+      breaks <- densemlp_time_grid(time_event[, 1], as.integer(n_bins), weights)
       output_dim <- length(breaks)
-      km <- densemlp_censoring_km(time_event[, 1], time_event[, 2], breaks)
+      km <- densemlp_censoring_km(time_event[, 1], time_event[, 2], breaks, weights)
       ghat_grid <- km$grid
       ymat <- cbind(time_event, ghat_at_time = km$at_time)
     }
@@ -463,7 +497,8 @@ densemlp <- function(x = NULL, y = NULL,
       offset = offset_mat, group_codes = group_codes,
       group_levels = vapply(group_levels, length, integer(1)),
       group_penalty = rep_len(as.numeric(group_penalty), length(groups)),
-      valid_rows = valid_rows
+      valid_rows = valid_rows,
+      case_weights = if (is.null(weights)) numeric() else weights
     ),
     warning = function(w) {
       if (grepl("RNG seed has to be set at the R level", conditionMessage(w))) {
@@ -494,6 +529,7 @@ densemlp <- function(x = NULL, y = NULL,
     group_levels = group_levels,
     group_penalty = group_penalty,
     has_offset = !is.null(offset),
+    has_weights = !is.null(weights),
     train_history = fit$train_history,
     valid_history = fit$valid_history,
     lr_history = fit$lr_history,

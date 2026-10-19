@@ -4,7 +4,7 @@
 \alias{densemlp_metrics}
 \title{Prediction metrics for a fitted densemlp model}
 \usage{
-densemlp_metrics(truth, estimate, task, prob = NULL)
+densemlp_metrics(truth, estimate, task, prob = NULL, weights = NULL)
 }
 \arguments{
 \item{truth}{Observed outcome values, or, for \code{task = "survival"}, a
@@ -19,6 +19,12 @@ survival, \code{type = "class"} for classification).}
 
 \item{prob}{Optional matrix of class probabilities (classification only),
 used to compute \code{macro_auc} and \code{log_loss}.}
+
+\item{weights}{Optional non-negative case weights, one per observation.
+When given, every metric is its weighted version (weighted means,
+weighted AUC and concordance counting each pair as the product of its
+two weights), e.g. an importance-weighted estimate of target-population
+performance under covariate shift.}
 }
 \value{
 A named list of metrics: \code{rmse}, \code{nrmse}, \code{rsq} for regression,
