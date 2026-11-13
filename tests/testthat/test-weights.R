@@ -115,29 +115,29 @@ test_that("weighted metrics equal metrics on repeated rows", {
   prob <- runif(n)
   prob <- cbind(n = 1 - prob, y = prob)
   est <- factor(ifelse(prob[, "y"] > 0.5, "y", "n"), levels = c("n", "y"))
-  expect_equal(densemlp_metrics(truth, est, "binary", prob, weights = w),
-               densemlp_metrics(truth[dup], est[dup], "binary", prob[dup, ]))
+  expect_equal(densemlpmetrics(truth, est, "binary", prob, weights = w),
+               densemlpmetrics(truth[dup], est[dup], "binary", prob[dup, ]))
   yr <- rnorm(n)
   er <- yr + rnorm(n)
-  mw <- densemlp_metrics(yr, er, "regression", weights = w)
-  md <- densemlp_metrics(yr[dup], er[dup], "regression")
+  mw <- densemlpmetrics(yr, er, "regression", weights = w)
+  md <- densemlpmetrics(yr[dup], er[dup], "regression")
   expect_equal(mw[c("rmse", "rsq")], md[c("rmse", "rsq")])
   skip_if_not_installed("survival")
   te <- survival::Surv(rexp(n), rbinom(n, 1, 0.7))
-  expect_equal(densemlp_metrics(te, er, "survival", weights = w),
-               densemlp_metrics(te[dup], er[dup], "survival"))
+  expect_equal(densemlpmetrics(te, er, "survival", weights = w),
+               densemlpmetrics(te[dup], er[dup], "survival"))
 })
 
-test_that("cv_densemlp() and tune_densemlp() pass weights through", {
+test_that("cvdensemlp() and tunedensemlp() pass weights through", {
   set.seed(9)
   x <- data.frame(a = rnorm(60), b = rnorm(60))
   y <- x$a + rnorm(60, sd = 0.3)
   w <- runif(60, 0.2, 3)
-  cv_w <- cv_densemlp(x, y, folds = 3, epochs = 5, hidden_units = 4, weights = w)
-  cv_u <- cv_densemlp(x, y, folds = 3, epochs = 5, hidden_units = 4)
+  cv_w <- cvdensemlp(x, y, folds = 3, epochs = 5, hidden_units = 4, weights = w)
+  cv_u <- cvdensemlp(x, y, folds = 3, epochs = 5, hidden_units = 4)
   expect_false(isTRUE(all.equal(cv_w$fold_metrics, cv_u$fold_metrics)))
-  expect_error(cv_densemlp(x, y, folds = 3, weights = w[-1]), "one value per row")
-  tuned <- tune_densemlp(x, y, repeats = 1, weights = w,
+  expect_error(cvdensemlp(x, y, folds = 3, weights = w[-1]), "one value per row")
+  tuned <- tunedensemlp(x, y, repeats = 1, weights = w,
                          grid = list(hidden_units = list(4), epochs = 5))
   expect_true(tuned$best_fit$has_weights)
 })

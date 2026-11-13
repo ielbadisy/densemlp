@@ -1,8 +1,8 @@
-test_that("tune_densemlp ranks candidates and refits the best one", {
+test_that("tunedensemlp ranks candidates and refits the best one", {
   set.seed(1)
   x <- data.frame(a = rnorm(80), b = rnorm(80))
   y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
-  tuned <- tune_densemlp(
+  tuned <- tunedensemlp(
     x, y, repeats = 1, validation = 0.2,
     grid = list(hidden_units = list(c(8), c(16, 8)), epochs = c(15))
   )
@@ -12,8 +12,8 @@ test_that("tune_densemlp ranks candidates and refits the best one", {
   expect_s3_class(tuned$best_fit, "densemlp")
 })
 
-test_that("tune_densemlp rejects unsupported grid names", {
+test_that("tunedensemlp rejects unsupported grid names", {
   x <- data.frame(a = rnorm(20))
   y <- rnorm(20)
-  expect_error(tune_densemlp(x, y, grid = list(activation = "relu")), "Unsupported")
+  expect_error(tunedensemlp(x, y, grid = list(activation = "relu")), "Unsupported")
 })

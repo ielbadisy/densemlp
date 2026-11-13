@@ -41,44 +41,44 @@ test_that("input_projection validates its value", {
   expect_error(densemlp(x, y, input_projection = 2.5), "positive integer")
 })
 
-test_that("perm_importance ranks a relevant feature above noise", {
+test_that("permimportance ranks a relevant feature above noise", {
   set.seed(1)
   n <- 200
   x <- data.frame(sig = rnorm(n), noise1 = rnorm(n), noise2 = rnorm(n))
   y <- 2 * x$sig + rnorm(n, sd = 0.1)
   fit <- densemlp(x, y, epochs = 80, hidden_units = c(16), seed = 1)
-  imp <- perm_importance(fit, x, y)
+  imp <- permimportance(fit, x, y)
   expect_s3_class(imp, "densemlp_importance")
   expect_identical(imp$data$feature[1], "sig")
   expect_gt(imp$data$importance[1], max(imp$data$importance[-1]))
 })
 
-test_that("perm_importance works for classification", {
+test_that("permimportance works for classification", {
   set.seed(1)
   n <- 200
   x <- data.frame(sig = rnorm(n), noise = rnorm(n))
   y <- factor(ifelse(x$sig + rnorm(n, sd = 0.3) > 0, "yes", "no"))
   fit <- densemlp(x, y, epochs = 80, hidden_units = c(16), seed = 1)
-  imp <- perm_importance(fit, x, y)
+  imp <- permimportance(fit, x, y)
   expect_identical(imp$data$feature[1], "sig")
 })
 
-test_that("perm_importance rejects ensembles", {
+test_that("permimportance rejects ensembles", {
   set.seed(1)
   x <- data.frame(a = rnorm(60), b = rnorm(60))
   y <- x$a + rnorm(60, sd = 0.1)
   fit <- densemlp(x, y, epochs = 20, hidden_units = c(8), ensemble = 2, seed = 1)
-  expect_error(perm_importance(fit, x, y), "does not support ensembles")
+  expect_error(permimportance(fit, x, y), "does not support ensembles")
 })
 
-test_that("plot_history returns the fit invisibly", {
+test_that("plothistory returns the fit invisibly", {
   set.seed(1)
   x <- data.frame(a = rnorm(60), b = rnorm(60))
   y <- x$a + rnorm(60, sd = 0.1)
   fit <- densemlp(x, y, epochs = 20, hidden_units = c(8), seed = 1)
   tmp <- tempfile(fileext = ".pdf")
   pdf(tmp)
-  out <- plot_history(fit)
+  out <- plothistory(fit)
   dev.off()
   unlink(tmp)
   expect_identical(out, fit)

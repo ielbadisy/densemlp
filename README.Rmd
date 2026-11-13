@@ -57,7 +57,7 @@ y <- 2 * x$a - x$b + rnorm(n, sd = 0.2)
 
 fit <- densemlp(x, y, hidden_units = c(32, 16), epochs = 60, seed = 1)
 pred <- predict(fit, x)
-densemlp_metrics(y, pred, task = "regression")
+densemlpmetrics(y, pred, task = "regression")
 ```
 
 ## Classification
@@ -78,15 +78,15 @@ sy <- Surv(lung$time, lung$status == 2)
 sx <- lung[, c("age", "sex", "ph.ecog")]
 
 sfit <- densemlp(sx, sy, task = "survival", hidden_units = c(16, 8), epochs = 60, seed = 1)
-densemlp_metrics(sy, predict(sfit, sx, type = "response"), task = "survival")
+densemlpmetrics(sy, predict(sfit, sx, type = "response"), task = "survival")
 ```
 
 ## More
 
-* `cv_densemlp()` - k-fold cross-validation.
-* `tune_densemlp()` - grid search over the architecture and optimizer knobs.
-* `perm_importance()` - model-agnostic permutation importance.
-* `plot_history()` / `plot()` - training and validation loss curves.
+* `cvdensemlp()` - k-fold cross-validation.
+* `tunedensemlp()` - grid search over the architecture and optimizer knobs.
+* `permimportance()` - model-agnostic permutation importance.
+* `plothistory()` / `plot()` - training and validation loss curves.
 
 See `?densemlp` and `vignette("densemlp-intro")` for the full API.
 

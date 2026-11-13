@@ -1,3 +1,17 @@
+# densemlp 0.9.1
+
+* Exported functions were renamed to glued lowercase names (no underscores). The old names still work but are deprecated and will be removed in a future release.
+
+| Old | New |
+|---|---|
+| `cv_densemlp()` | `cvdensemlp()` |
+| `densemlp_integrated_brier_score()` | `densemlpintegratedbrierscore()` |
+| `densemlp_metrics()` | `densemlpmetrics()` |
+| `group_effects()` | `groupeffects()` |
+| `perm_importance()` | `permimportance()` |
+| `plot_history()` | `plothistory()` |
+| `tune_densemlp()` | `tunedensemlp()` |
+
 # densemlp 0.9.0
 
 ## New features

@@ -143,7 +143,7 @@
 #' the output layer and before its activation, so the fitted model is
 #' `g(E[y]) = f(x) + offset + sum_k alpha_k[group_k]`, where `f` is the
 #' network and the `alpha_k` are the per-level intercepts (see
-#' [group_effects()]).
+#' [groupeffects()]).
 #'
 #' @section Survival:
 #' `task = "survival"` supports two losses, both trained batch-wise against
@@ -179,7 +179,7 @@
 #' survival probability at the final time bin, so higher is still
 #' riskier); with
 #' `loss = "brier"`, `type = "survival"` additionally returns the full
-#' `n_bins`-column survival-probability matrix. [densemlp_metrics()] reports
+#' `n_bins`-column survival-probability matrix. [densemlpmetrics()] reports
 #' Harrell's concordance index for `task = "survival"` regardless of loss.
 #'
 #' @return A `densemlp` object.

@@ -1,7 +1,7 @@
 #' Cross-validate a densemlp model
 #'
 #' Fits [densemlp()] on each of `folds` training splits and evaluates it on the
-#' held-out fold via [densemlp_metrics()].
+#' held-out fold via [densemlpmetrics()].
 #'
 #' @param x Predictor data.frame or matrix.
 #' @param y Outcome vector.
@@ -15,7 +15,7 @@
 #' @param verbose Print per-fold progress.
 #' @param weights Optional non-negative case weights, one per row. Each fold
 #'   is fitted with its training rows' weights (see [densemlp()]) and scored
-#'   with weighted metrics on its held-out rows (see [densemlp_metrics()]),
+#'   with weighted metrics on its held-out rows (see [densemlpmetrics()]),
 #'   which gives importance-weighted cross-validation under covariate shift.
 #' @param ... Additional arguments passed to [densemlp()] for every fold (e.g.
 #'   `hidden_units`, `epochs`, `lr`).
@@ -26,10 +26,10 @@
 #' set.seed(1)
 #' x <- data.frame(a = rnorm(60), b = rnorm(60))
 #' y <- x$a - 0.5 * x$b + rnorm(60, sd = 0.1)
-#' cv <- cv_densemlp(x, y, folds = 3, epochs = 20, hidden_units = c(8))
+#' cv <- cvdensemlp(x, y, folds = 3, epochs = 20, hidden_units = c(8))
 #' cv$summary
 #' @export
-cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
+cvdensemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                      folds = 5L, seed = 1L, ncores = 1L, verbose = FALSE,
                      weights = NULL, ...) {
   task <- match.arg(task)
@@ -68,7 +68,7 @@ cv_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multicla
       estimate <- stats::predict(fit, newdata, type = "class")
       prob <- stats::predict(fit, newdata, type = "prob")
     }
-    metrics <- densemlp_metrics(truth, estimate, fit$task, prob,
+    metrics <- densemlpmetrics(truth, estimate, fit$task, prob,
                                 weights = if (is.null(weights)) NULL else weights[test_idx])
     if (isTRUE(verbose)) {
       message(sprintf("Fold %d/%d done", k, folds))

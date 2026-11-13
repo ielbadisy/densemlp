@@ -41,7 +41,7 @@ test_that("densemlp fits a survival model and improves the Cox partial likelihoo
   expect_true(utils::tail(fit$train_history, 1) < fit$train_history[1])
 
   risk_score <- predict(fit, x, type = "response")
-  metrics <- densemlp_metrics(y, risk_score, task = "survival")
+  metrics <- densemlpmetrics(y, risk_score, task = "survival")
   expect_true(metrics$concordance > 0.55)
 })
 
@@ -77,10 +77,10 @@ test_that("densemlp fits a survival model with the Brier loss and improves the I
   expect_true(all(diff(t(surv)) <= 1e-8)) # non-increasing survival curves
 
   risk_score <- predict(fit, x, type = "response")
-  metrics <- densemlp_metrics(y, risk_score, task = "survival")
+  metrics <- densemlpmetrics(y, risk_score, task = "survival")
   expect_true(metrics$concordance > 0.55)
 
-  ibs <- densemlp_integrated_brier_score(fit, x, y)
+  ibs <- densemlpintegratedbrierscore(fit, x, y)
   expect_true(is.finite(ibs) && ibs >= 0 && ibs <= 1)
 })
 

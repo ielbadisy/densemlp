@@ -11,7 +11,7 @@
 #' @param truth Ground-truth outcome for `new_data`: a numeric vector
 #'   (regression), a factor/character (classification), or a
 #'   `survival::Surv()` / two-column `(time, event)` object (survival).
-#' @param metric Metric name understood by [densemlp_metrics()]. Defaults to
+#' @param metric Metric name understood by [densemlpmetrics()]. Defaults to
 #'   `"rmse"` (regression), `"accuracy"` (classification) or `"concordance"`
 #'   (survival).
 #' @param seed Random seed used for the column shuffles.
@@ -24,15 +24,15 @@
 #' x <- data.frame(a = rnorm(120), b = rnorm(120), c = rnorm(120))
 #' y <- x$a - 0.5 * x$b + rnorm(120, sd = 0.1)
 #' fit <- densemlp(x, y, epochs = 40, hidden_units = c(16))
-#' perm_importance(fit, x, y)
+#' permimportance(fit, x, y)
 #' @export
-perm_importance <- function(object, new_data, truth, metric = NULL,
+permimportance <- function(object, new_data, truth, metric = NULL,
                             seed = object$seed) {
   if (!inherits(object, "densemlp")) {
     stop("`object` must be a <densemlp> fit.", call. = FALSE)
   }
   if (!is.null(object$members)) {
-    stop("`perm_importance()` does not support ensembles; use an individual member.", call. = FALSE)
+    stop("`permimportance()` does not support ensembles; use an individual member.", call. = FALSE)
   }
   task <- object$task
   metric <- metric %||% switch(task,
@@ -68,23 +68,23 @@ perm_importance <- function(object, new_data, truth, metric = NULL,
 score_densemlp_metric <- function(object, new_data, truth, metric, task) {
   if (task %in% c("regression", "count")) {
     pred <- stats::predict(object, new_data, type = "response")
-    return(densemlp_metrics(truth, pred, task = "regression")[[metric]])
+    return(densemlpmetrics(truth, pred, task = "regression")[[metric]])
   }
   if (identical(task, "survival")) {
     risk <- stats::predict(object, new_data, type = "response")
-    return(densemlp_metrics(truth, risk, task = "survival")[[metric]])
+    return(densemlpmetrics(truth, risk, task = "survival")[[metric]])
   }
   if (metric %in% c("macro_auc", "log_loss")) {
     prob <- stats::predict(object, new_data, type = "prob")
     pred <- factor(colnames(prob)[max.col(prob, ties.method = "first")],
                    levels = colnames(prob))
-    return(densemlp_metrics(truth, pred, task = "multiclass", prob = prob)[[metric]])
+    return(densemlpmetrics(truth, pred, task = "multiclass", prob = prob)[[metric]])
   }
   pred <- stats::predict(object, new_data, type = "class")
-  densemlp_metrics(truth, pred, task = "multiclass")[[metric]]
+  densemlpmetrics(truth, pred, task = "multiclass")[[metric]]
 }
 
-#' @rdname perm_importance
+#' @rdname permimportance
 #' @param x A `densemlp_importance` object.
 #' @param ... Unused.
 #' @export
