@@ -258,10 +258,11 @@ logit at or before it, so each bin's Brier-score gradient is
 distributed back across all of them.
 }
 
-\code{predict(fit, newdata, type = "response")} returns a linear risk score
-for either loss (for \code{"brier"}, the negative log of the predicted
-survival probability at the final time bin, so higher is still
-riskier); with
+\code{predict(fit, newdata, type = "response")} returns a risk score, higher =
+riskier, for either loss: the linear predictor for \code{"cox"}, and for
+\code{"brier"} minus the restricted mean survival time up to the last grid
+time, \eqn{-\sum_k S(t_{k-1})(t_k - t_{k-1})} with \eqn{S(t_0) = 1}
+(the area under the predicted step curve, in time units). With
 \code{loss = "brier"}, \code{type = "survival"} additionally returns the full
 \code{n_bins}-column survival-probability matrix. \code{\link[=densemlpmetrics]{densemlpmetrics()}} reports
 Harrell's concordance index for \code{task = "survival"} regardless of loss.

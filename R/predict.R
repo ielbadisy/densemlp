@@ -4,8 +4,10 @@
 #' @param newdata New predictor data, in the same representation used to fit.
 #' @param type `"response"` (regression: unscaled prediction; binary:
 #'   predicted probability of the second factor level; count: predicted
-#'   mean; survival: a linear
-#'   risk score, higher = riskier, for either `loss`), `"class"`
+#'   mean; survival: a risk score, higher = riskier: the linear predictor
+#'   for `loss = "cox"`, and minus the restricted mean survival time up to
+#'   the last grid time (area under the predicted survival curve) for
+#'   `loss = "brier"`), `"class"`
 #'   (classification only: predicted factor label), `"prob"`
 #'   (classification only: a matrix of class probabilities), or
 #'   `"survival"` (survival with `loss = "brier"` only: the full
@@ -127,8 +129,13 @@ predict.densemlp <- function(object, newdata, type = c("response", "class", "pro
     colnames(surv) <- sprintf("t=%.4g", object$survival_breaks)
     if (type == "survival") return(surv)
     if (type != "response") stop("`type` must be \"response\" or \"survival\" for a Brier-loss survival model.", call. = FALSE)
-    eps <- 1e-8
-    return(-log(pmax(surv[, ncol(surv)], eps)))
+    # Risk score: minus the restricted mean survival time up to the last
+    # grid time, i.e. the area under the predicted step curve. Using only the
+    # last bin (S near 0, driven by large IPCW weights) gave a poor ranking.
+    breaks <- object$survival_breaks
+    widths <- diff(c(0, breaks))
+    s_left <- cbind(1, surv[, -ncol(surv), drop = FALSE])
+    return(-as.numeric(s_left %*% widths))
   }
 
   if (object$task_code == 1L) {

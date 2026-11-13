@@ -20,8 +20,10 @@
 
 \item{type}{\code{"response"} (regression: unscaled prediction; binary:
 predicted probability of the second factor level; count: predicted
-mean; survival: a linear
-risk score, higher = riskier, for either \code{loss}), \code{"class"}
+mean; survival: a risk score, higher = riskier: the linear predictor
+for \code{loss = "cox"}, and minus the restricted mean survival time up to
+the last grid time (area under the predicted survival curve) for
+\code{loss = "brier"}), \code{"class"}
 (classification only: predicted factor label), \code{"prob"}
 (classification only: a matrix of class probabilities), or
 \code{"survival"} (survival with \code{loss = "brier"} only: the full
