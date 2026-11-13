@@ -174,10 +174,11 @@
 #'   logit at or before it, so each bin's Brier-score gradient is
 #'   distributed back across all of them.
 #'
-#' `predict(fit, newdata, type = "response")` returns a linear risk score
-#' for either loss (for `"brier"`, the negative log of the predicted
-#' survival probability at the final time bin, so higher is still
-#' riskier); with
+#' `predict(fit, newdata, type = "response")` returns a risk score, higher =
+#' riskier, for either loss: the linear predictor for `"cox"`, and for
+#' `"brier"` minus the restricted mean survival time up to the last grid
+#' time, \eqn{-\sum_k S(t_{k-1})(t_k - t_{k-1})} with \eqn{S(t_0) = 1}
+#' (the area under the predicted step curve, in time units). With
 #' `loss = "brier"`, `type = "survival"` additionally returns the full
 #' `n_bins`-column survival-probability matrix. [densemlpmetrics()] reports
 #' Harrell's concordance index for `task = "survival"` regardless of loss.
@@ -242,6 +243,11 @@ densemlp <- function(x = NULL, y = NULL,
       stop("Both `x` and `y` are required.", call. = FALSE)
     }
     outcome_name <- deparse(substitute(y))
+  }
+  n_na_y <- if (inherits(y, "Surv")) sum(rowSums(is.na(unclass(y))) > 0) else sum(is.na(y))
+  if (n_na_y > 0L) {
+    stop(sprintf(paste0("`y` contains %d missing value(s); densemlp() does not handle a missing ",
+                        "outcome. Remove or impute these rows before fitting."), n_na_y), call. = FALSE)
   }
 
   if (identical(task, "auto")) {

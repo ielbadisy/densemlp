@@ -1,3 +1,9 @@
+# densemlp 0.9.2
+
+* `densemlp()` now stops early with a clear message when `y` contains missing values (previously they silently propagated to NA weights and NA predictions).
+* `loss = "brier"` survival: `predict(type = "response")` now returns minus the restricted mean survival time up to the last grid time (area under the predicted survival curve) instead of `-log` of the last-bin survival probability. The last bin (survival near 0, driven by large IPCW weights) ranked subjects poorly (C-index near 0.5 on simple PH data); the new score restores a sensible ranking. Values returned by `type = "response"` for Brier-loss fits therefore change.
+* The vignette is rebuilt with the current (no-underscore) function names.
+
 # densemlp 0.9.1
 
 * Exported functions were renamed to glued lowercase names (no underscores). The old names still work but are deprecated and will be removed in a future release.

@@ -275,3 +275,24 @@ test_that("binary validation loss is the full Bernoulli cross-entropy", {
   # (1 - y) log(1 - p) term would roughly halve it.
   expect_true(all(fit$valid_history > 0.6))
 })
+
+test_that("brier-loss survival default risk score ranks a simple PH dataset (C-index > 0.5)", {
+  skip_if_not_installed("survival")
+  set.seed(2)
+  n <- 600
+  x <- matrix(rnorm(n * 3), n)
+  lp <- 1.0 * x[, 1] - 0.7 * x[, 2]
+  t <- rexp(n, exp(lp)); cens <- rexp(n, 0.3)
+  y <- survival::Surv(pmin(t, cens), as.numeric(t <= cens))
+  tr <- 1:400; te <- 401:600
+  fit <- densemlp(x[tr, ], y[tr], task = "survival", loss = "brier",
+                  epochs = 60, hidden_units = c(16, 8), seed = 2)
+  risk <- predict(fit, x[te, ])
+  cidx <- survival::concordance(y[te] ~ risk, reverse = TRUE)$concordance
+  expect_gt(cidx, 0.6)
+  expect_gt(densemlpmetrics(y[te], risk, task = "survival")[["concordance"]], 0.6)
+  # risk is minus the restricted mean survival time from the predicted curve
+  S <- predict(fit, x[te, ], type = "survival")
+  rmst <- as.numeric(cbind(1, S[, -ncol(S)]) %*% diff(c(0, fit$survival_breaks)))
+  expect_equal(risk, -rmst)
+})
