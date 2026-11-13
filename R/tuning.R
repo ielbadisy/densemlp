@@ -33,13 +33,13 @@
 #' set.seed(1)
 #' x <- data.frame(a = rnorm(80), b = rnorm(80))
 #' y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
-#' tuned <- tune_densemlp(
+#' tuned <- tunedensemlp(
 #'   x, y, repeats = 1,
 #'   grid = list(hidden_units = list(c(8), c(16, 8)), epochs = c(20))
 #' )
 #' tuned$best_config
 #' @export
-tune_densemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
+tunedensemlp <- function(x, y, task = c("auto", "regression", "binary", "multiclass", "survival", "count"),
                        grid = NULL, validation = 0.2, seed = 1L, repeats = 3L,
                        ncores = 1L, verbose = FALSE, refit = TRUE, weights = NULL) {
   task <- match.arg(task)

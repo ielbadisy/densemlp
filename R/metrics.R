@@ -41,9 +41,9 @@ concordance_index <- function(time, event, risk, w = NULL) {
 #'
 #' @return A single numeric integrated Brier score.
 #' @export
-densemlp_integrated_brier_score <- function(object, newdata, y) {
+densemlpintegratedbrierscore <- function(object, newdata, y) {
   if (object$task_code != 3L || !identical(object$loss, "brier")) {
-    stop("`densemlp_integrated_brier_score()` requires a model fit with `task = \"survival\", loss = \"brier\"`.", call. = FALSE)
+    stop("`densemlpintegratedbrierscore()` requires a model fit with `task = \"survival\", loss = \"brier\"`.", call. = FALSE)
   }
   te <- densemlp_as_time_event_matrix(y)
   breaks <- object$survival_breaks
@@ -85,7 +85,7 @@ densemlp_integrated_brier_score <- function(object, newdata, y) {
 #'   `accuracy`, `balanced_accuracy`, `macro_auc`, `log_loss` for
 #'   classification, or `concordance` (Harrell's C-index) for survival.
 #' @export
-densemlp_metrics <- function(truth, estimate, task, prob = NULL, weights = NULL) {
+densemlpmetrics <- function(truth, estimate, task, prob = NULL, weights = NULL) {
   if (!is.null(weights)) {
     if (!is.numeric(weights) || length(weights) != NROW(truth) ||
         any(!is.finite(weights)) || any(weights < 0) || !any(weights > 0)) {
@@ -144,7 +144,7 @@ densemlp_metrics <- function(truth, estimate, task, prob = NULL, weights = NULL)
   )
 }
 
-# Weighted counterparts of densemlp_metrics(), used when `weights` is given.
+# Weighted counterparts of densemlpmetrics(), used when `weights` is given.
 densemlp_weighted_metrics <- function(truth, estimate, task, prob, w) {
   wmean <- function(v) sum(w * v) / sum(w)
   if (identical(task, "survival")) {

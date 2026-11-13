@@ -89,15 +89,15 @@ densemlp_offset_matrix <- function(offset, n, output_dim) {
 #'   one row per level and one column per class. For an ensemble, the
 #'   members' intercepts are averaged.
 #' @export
-group_effects <- function(object, ...) {
-  UseMethod("group_effects")
+groupeffects <- function(object, ...) {
+  UseMethod("groupeffects")
 }
 
-#' @rdname group_effects
+#' @rdname groupeffects
 #' @export
-group_effects.densemlp <- function(object, ...) {
+groupeffects.densemlp <- function(object, ...) {
   if (!is.null(object$members)) {
-    per_member <- lapply(object$members, group_effects.densemlp)
+    per_member <- lapply(object$members, groupeffects.densemlp)
     nms <- names(per_member[[1L]])
     return(stats::setNames(lapply(nms, function(nm) {
       vals <- lapply(per_member, function(m) m[[nm]])

@@ -1,6 +1,7 @@
 # densemlp
 
-[![CRAN status](https://www.r-pkg.org/badges/version/densemlp)](https://CRAN.R-project.org/package=densemlp)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/densemlp)](https://CRAN.R-project.org/package=densemlp)
 
 `densemlp` provides dense feed-forward neural network models (multilayer
 perceptrons) for tabular **regression**, **classification** and
@@ -44,7 +45,7 @@ y <- 2 * x$a - x$b + rnorm(n, sd = 0.2)
 
 fit <- densemlp(x, y, hidden_units = c(32, 16), epochs = 60, seed = 1)
 pred <- predict(fit, x)
-densemlp_metrics(y, pred, task = "regression")
+densemlpmetrics(y, pred, task = "regression")
 #> $rmse
 #> [1] 0.2414633
 #> 
@@ -79,18 +80,18 @@ sy <- Surv(lung$time, lung$status == 2)
 sx <- lung[, c("age", "sex", "ph.ecog")]
 
 sfit <- densemlp(sx, sy, task = "survival", hidden_units = c(16, 8), epochs = 60, seed = 1)
-densemlp_metrics(sy, predict(sfit, sx, type = "response"), task = "survival")
+densemlpmetrics(sy, predict(sfit, sx, type = "response"), task = "survival")
 #> $concordance
 #> [1] 0.5200131
 ```
 
 ## More
 
-- `cv_densemlp()` - k-fold cross-validation.
-- `tune_densemlp()` - grid search over the architecture and optimizer
+- `cvdensemlp()` - k-fold cross-validation.
+- `tunedensemlp()` - grid search over the architecture and optimizer
   knobs.
-- `perm_importance()` - model-agnostic permutation importance.
-- `plot_history()` / `plot()` - training and validation loss curves.
+- `permimportance()` - model-agnostic permutation importance.
+- `plothistory()` / `plot()` - training and validation loss curves.
 
 See `?densemlp` and `vignette("densemlp-intro")` for the full API.
 
@@ -101,7 +102,7 @@ citation("densemlp")
 #> To cite densemlp in publications, use:
 #> 
 #>   El Badisy I (2026). _densemlp: Dense Neural Networks for Tabular
-#>   Regression, Classification and Survival_. R package version 0.7.1,
+#>   Regression, Classification and Survival_. R package version 0.9.1,
 #>   <https://CRAN.R-project.org/package=densemlp>.
 #> 
 #> A BibTeX entry for LaTeX users is
@@ -110,7 +111,7 @@ citation("densemlp")
 #>     title = {densemlp: Dense Neural Networks for Tabular Regression, Classification and Survival},
 #>     author = {Imad {El Badisy}},
 #>     year = {2026},
-#>     note = {R package version 0.7.1},
+#>     note = {R package version 0.9.1},
 #>     url = {https://CRAN.R-project.org/package=densemlp},
 #>   }
 ```

@@ -35,9 +35,9 @@ plot.densemlp <- function(x, ...) {
 #' x <- data.frame(a = rnorm(80), b = rnorm(80))
 #' y <- x$a - 0.5 * x$b + rnorm(80, sd = 0.1)
 #' fit <- densemlp(x, y, epochs = 40, hidden_units = c(16))
-#' plot_history(fit)
+#' plothistory(fit)
 #' @export
-plot_history <- function(object, ...) {
+plothistory <- function(object, ...) {
   if (!inherits(object, "densemlp")) {
     stop("`object` must be a <densemlp> fit.", call. = FALSE)
   }

@@ -224,7 +224,7 @@ epoch are restored at the end.
 the output layer and before its activation, so the fitted model is
 \verb{g(E[y]) = f(x) + offset + sum_k alpha_k[group_k]}, where \code{f} is the
 network and the \code{alpha_k} are the per-level intercepts (see
-\code{\link[=group_effects]{group_effects()}}).
+\code{\link[=groupeffects]{groupeffects()}}).
 }
 \section{Survival}{
 
@@ -263,7 +263,7 @@ for either loss (for \code{"brier"}, the negative log of the predicted
 survival probability at the final time bin, so higher is still
 riskier); with
 \code{loss = "brier"}, \code{type = "survival"} additionally returns the full
-\code{n_bins}-column survival-probability matrix. \code{\link[=densemlp_metrics]{densemlp_metrics()}} reports
+\code{n_bins}-column survival-probability matrix. \code{\link[=densemlpmetrics]{densemlpmetrics()}} reports
 Harrell's concordance index for \code{task = "survival"} regardless of loss.
 }
 

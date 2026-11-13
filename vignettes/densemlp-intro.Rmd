@@ -79,7 +79,7 @@ combined with `interaction`.
 
 `interaction = TRUE` (an efficient learned cross-feature layer) is also available, but is
 currently numerically unstable on small-n/high-p regression data and is not recommended - see
-`NEWS.md` for details. It is left out of `tune_densemlp()`'s search grid for the same reason.
+`NEWS.md` for details. It is left out of `tunedensemlp()`'s search grid for the same reason.
 
 ## Internal ensembles
 
@@ -98,24 +98,24 @@ sqrt(mean((predict(fit_ens, x[test, ]) - y[test])^2))
 
 ## Cross-validation
 
-`cv_densemlp()` fits `densemlp()` on each of `folds` splits and scores the held-out fold with
-`densemlp_metrics()` (RMSE/NRMSE/R² for regression; accuracy/balanced accuracy/macro AUC/log loss for
+`cvdensemlp()` fits `densemlp()` on each of `folds` splits and scores the held-out fold with
+`densemlpmetrics()` (RMSE/NRMSE/R² for regression; accuracy/balanced accuracy/macro AUC/log loss for
 classification). Extra arguments are forwarded to every fold's `densemlp()` call.
 
 ```{r}
-cv <- cv_densemlp(x, y, folds = 5, hidden_units = c(32, 16), epochs = 40)
+cv <- cvdensemlp(x, y, folds = 5, hidden_units = c(32, 16), epochs = 40)
 cv
 ```
 
 ## Hyperparameter tuning
 
-`tune_densemlp()` grid-searches over `hidden_units`, `dropout`, `residual`, `gated`, `ema_decay`,
+`tunedensemlp()` grid-searches over `hidden_units`, `dropout`, `residual`, `gated`, `ema_decay`,
 `lr_schedule`, `epochs`, `batch_size`, and `lr`. Each candidate is repeated (`repeats`) with
 successive seeds and ranked by mean best-epoch validation loss; the best configuration is refit on
 the full data by default.
 
 ```{r}
-tuned <- tune_densemlp(
+tuned <- tunedensemlp(
   x, y, repeats = 2,
   grid = list(
     hidden_units = list(c(16), c(32, 16)),
@@ -141,26 +141,26 @@ sx <- lung[, c("age", "sex", "ph.ecog", "ph.karno", "wt.loss")]
 
 sfit <- densemlp(sx, sy, task = "survival", hidden_units = c(16, 8), epochs = 60)
 risk <- predict(sfit, sx, type = "response")
-densemlp_metrics(sy, risk, task = "survival")
+densemlpmetrics(sy, risk, task = "survival")
 ```
 
 ## Variable importance
 
-`perm_importance()` gives model-agnostic permutation importance: each predictor is shuffled in
-turn and the drop in `densemlp_metrics()` performance is recorded.
+`permimportance()` gives model-agnostic permutation importance: each predictor is shuffled in
+turn and the drop in `densemlpmetrics()` performance is recorded.
 
 ```{r}
-imp <- perm_importance(fit, x[test, ], y[test])
+imp <- permimportance(fit, x[test, ], y[test])
 imp$data
 ```
 
 ## Visualizing training
 
 ```{r, fig.width = 6, fig.height = 4}
-plot(fit)          # or, equivalently, plot_history(fit)
+plot(fit)          # or, equivalently, plothistory(fit)
 ```
 
 ## Learn more
 
-See `?densemlp`, `?cv_densemlp`, `?tune_densemlp`, `?densemlp_metrics` and `?perm_importance` for
+See `?densemlp`, `?cvdensemlp`, `?tunedensemlp`, `?densemlpmetrics` and `?permimportance` for
 full argument documentation, and `NEWS.md` for the changelog.

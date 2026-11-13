@@ -7,8 +7,8 @@ test_that("group intercepts recover additive cluster effects", {
   y <- sin(2 * x$x1) + alpha[id] + rnorm(n_id * n_t, sd = 0.3)
   fit <- densemlp(x, y, groups = list(id = id), hidden_units = c(16, 8),
                   epochs = 150, batch_size = 64, lr = 5e-3, seed = 1)
-  eff <- group_effects(fit)$id
-  expect_named(group_effects(fit), "id")
+  eff <- groupeffects(fit)$id
+  expect_named(groupeffects(fit), "id")
   expect_length(eff, n_id)
   expect_gt(stats::cor(eff, alpha), 0.95)
   # with the group levels, predictions beat the population-level ones
@@ -26,7 +26,7 @@ test_that("group_penalty can differ across grouping factors", {
   y <- x$x1 + rnorm(20, sd = 2)[id] + rnorm(8, sd = 2)[tm] + rnorm(160, sd = 0.2)
   fit <- densemlp(x, y, groups = list(id = id, time = tm), group_penalty = c(0, 1e3),
                   hidden_units = 8, epochs = 60, lr = 5e-3, seed = 1)
-  eff <- group_effects(fit)
+  eff <- groupeffects(fit)
   expect_gt(stats::sd(eff$id), 10 * stats::sd(eff$time))
   expect_error(densemlp(x, y, groups = list(id = id, time = tm), group_penalty = c(0, 1, 2)),
                "one value per grouping factor")
@@ -94,7 +94,7 @@ test_that("multiclass takes a matrix offset and per-class group intercepts", {
   y <- factor(sample(c("u", "v", "w"), n, replace = TRUE))
   fit <- densemlp(x, y, task = "multiclass", groups = g, offset = matrix(0, n, 3),
                   hidden_units = 4, epochs = 5, seed = 6)
-  eff <- group_effects(fit)$group
+  eff <- groupeffects(fit)$group
   expect_equal(dim(eff), c(5L, 3L))
   expect_equal(dimnames(eff), list(letters[1:5], c("u", "v", "w")))
   pr <- predict(fit, x, type = "prob", groups = g)
@@ -111,7 +111,7 @@ test_that("survival rejects offset and groups; ensembles pass them through", {
   y <- x$a + rep(c(-1, 1), n / 2)
   ens <- densemlp(x, y, groups = list(id = rep(1:2, n / 2)), ensemble = 2,
                   hidden_units = 4, epochs = 20, seed = 7)
-  expect_length(group_effects(ens)$id, 2L)
+  expect_length(groupeffects(ens)$id, 2L)
   expect_length(predict(ens, x, groups = list(id = rep(1:2, n / 2))), n)
 })
 
