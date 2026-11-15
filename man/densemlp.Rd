@@ -38,7 +38,8 @@ densemlp(
   offset = NULL,
   groups = NULL,
   group_penalty = 0,
-  weights = NULL
+  weights = NULL,
+  weight_decay = 0
 )
 
 \method{print}{densemlp}(x, ...)
@@ -183,6 +184,19 @@ regression outcome) are standardized with weighted means and standard
 deviations, so integer weights behave like repeated rows (up to the
 \code{n - 1} denominator of the standard deviations). Rows with
 weight \code{0} do not contribute. \code{NULL} (default) fits unweighted.}
+
+\item{weight_decay}{Non-negative L2 penalty (weight decay) \eqn{\lambda} on
+the weight matrices: the network minimizes
+\eqn{L(\theta) + (\lambda / 2) \sum_l \|W_l\|_F^2}, so each weight
+gradient gains \eqn{\lambda W_l} before the Adam step (coupled L2, as
+the \code{weight_decay} of \code{torch.optim.Adam}). The penalty covers the layer,
+output, residual-projection, gate and input-projection weights; biases,
+batch-normalization parameters, the interaction layer and group
+intercepts are not penalized (use \code{group_penalty} for those). Inputs are
+standardized, so one value applies on a common scale. For regression the
+data term is half the mean squared error of the standardized outcome.
+The reported training and validation losses exclude the penalty. \code{0}
+(default) fits unpenalized.}
 
 \item{...}{Unused.}
 }

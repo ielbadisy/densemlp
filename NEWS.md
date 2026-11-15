@@ -1,3 +1,7 @@
+# densemlp 0.9.3
+
+* New `weight_decay` argument in `densemlp()`: an L2 penalty, (lambda / 2) times the sum of squared weights, added in the native engine as `lambda * W` to every weight gradient before the Adam step (biases, batch-normalization parameters and group intercepts are not penalized). The gradient is checked against finite differences, and a linear model with `weight_decay` converges to the closed-form ridge solution.
+
 # densemlp 0.9.2
 
 * `densemlp()` now stops early with a clear message when `y` contains missing values (previously they silently propagated to NA weights and NA predictions).

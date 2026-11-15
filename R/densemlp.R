@@ -112,6 +112,18 @@
 #'   deviations, so integer weights behave like repeated rows (up to the
 #'   `n - 1` denominator of the standard deviations). Rows with
 #'   weight `0` do not contribute. `NULL` (default) fits unweighted.
+#' @param weight_decay Non-negative L2 penalty (weight decay) \eqn{\lambda} on
+#'   the weight matrices: the network minimizes
+#'   \eqn{L(\theta) + (\lambda / 2) \sum_l \|W_l\|_F^2}, so each weight
+#'   gradient gains \eqn{\lambda W_l} before the Adam step (coupled L2, as
+#'   the `weight_decay` of `torch.optim.Adam`). The penalty covers the layer,
+#'   output, residual-projection, gate and input-projection weights; biases,
+#'   batch-normalization parameters, the interaction layer and group
+#'   intercepts are not penalized (use `group_penalty` for those). Inputs are
+#'   standardized, so one value applies on a common scale. For regression the
+#'   data term is half the mean squared error of the standardized outcome.
+#'   The reported training and validation losses exclude the penalty. `0`
+#'   (default) fits unpenalized.
 #'
 #' @details
 #' Hidden layers are `Linear -> BatchNorm -> ReLU -> optional gate -> optional
@@ -205,7 +217,7 @@ densemlp <- function(x = NULL, y = NULL,
                      seed = 1L, verbose = FALSE, ncores = 1L,
                      formula = NULL, data = NULL,
                      offset = NULL, groups = NULL, group_penalty = 0,
-                     weights = NULL) {
+                     weights = NULL, weight_decay = 0) {
   task <- match.arg(task)
   loss <- match.arg(loss)
   lr_schedule <- match.arg(lr_schedule)
@@ -287,6 +299,10 @@ densemlp <- function(x = NULL, y = NULL,
     validation <- length(valid_rows) / NROW(y)
   } else if (length(validation) != 1L || !is.finite(validation) || validation < 0 || validation >= 1) {
     stop("`validation` must be a fraction in [0, 1) or a vector of row indices.", call. = FALSE)
+  }
+  if (!is.numeric(weight_decay) || length(weight_decay) != 1L ||
+      !is.finite(weight_decay) || weight_decay < 0) {
+    stop("`weight_decay` must be one non-negative number.", call. = FALSE)
   }
   if (!is.numeric(group_penalty) || length(group_penalty) < 1L ||
       any(!is.finite(group_penalty)) || any(group_penalty < 0)) {
@@ -373,6 +389,7 @@ densemlp <- function(x = NULL, y = NULL,
         groups = if (is.null(groups)) NULL else lapply(groups, `[`, index),
         group_penalty = group_penalty,
         weights = if (is.null(weights)) NULL else weights[index],
+        weight_decay = weight_decay,
         loss = loss, n_bins = n_bins,
         hidden_units = hidden_units, epochs = epochs, batch_size = batch_size,
         lr = lr, validation = validation, early_stopping = early_stopping,
@@ -399,7 +416,8 @@ densemlp <- function(x = NULL, y = NULL,
       batch_norm = isTRUE(batch_norm),
       input_projection = if (is.null(input_projection)) NULL else as.integer(input_projection),
       interaction = isTRUE(interaction), ema_decay = ema_decay,
-      lr_schedule = lr_schedule, validation = validation, seed = as.integer(seed)
+      lr_schedule = lr_schedule, validation = validation, seed = as.integer(seed),
+      weight_decay = weight_decay
     )
     class(out) <- "densemlp"
     return(out)
@@ -504,7 +522,8 @@ densemlp <- function(x = NULL, y = NULL,
       group_levels = vapply(group_levels, length, integer(1)),
       group_penalty = rep_len(as.numeric(group_penalty), length(groups)),
       valid_rows = valid_rows,
-      case_weights = if (is.null(weights)) numeric() else weights
+      case_weights = if (is.null(weights)) numeric() else weights,
+      weight_decay = as.numeric(weight_decay)
     ),
     warning = function(w) {
       if (grepl("RNG seed has to be set at the R level", conditionMessage(w))) {
@@ -534,6 +553,7 @@ densemlp <- function(x = NULL, y = NULL,
     group_weights = stats::setNames(fit$group_weights, names(groups)),
     group_levels = group_levels,
     group_penalty = group_penalty,
+    weight_decay = weight_decay,
     has_offset = !is.null(offset),
     has_weights = !is.null(weights),
     train_history = fit$train_history,
