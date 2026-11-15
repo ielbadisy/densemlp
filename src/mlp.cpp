@@ -603,7 +603,8 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
                                  bool use_proj, int survival_loss,
                                  const vec &breaks, const vec &ghat_grid,
                                  const OutputTerms &terms, const vec &group_penalty,
-                                 const vec &wb) {
+                                 const vec &wb, double weight_decay = 0.0,
+                                 std::vector<mat> *grad_capture = nullptr) {
   size_t n_hidden = p.gamma.size();
   double nb = (double)c.A[0].n_rows;
 
@@ -643,6 +644,8 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
     mat dW = c.A[l].t() * dZ;
     vec dB = arma::sum(dZ, 0).t();
     mat dA_prev = dZ * p.W[l].t();
+    if (weight_decay > 0.0) dW += weight_decay * p.W[l];
+    if (grad_capture) (*grad_capture)[l] = dW;
     adam_step(p.W[l], s.mW[l], s.vW[l], dW, lr, bc1, bc2);
     adam_step(p.B[l], s.mB[l], s.vB[l], dB, lr, bc1, bc2);
     dZ = dA_prev; // becomes dA for the last hidden layer's output (pre-ReLU-grad)
@@ -660,6 +663,7 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
     if (gated) {
       mat dGateZ = dMain % c.H[l] % c.Gate[l] % (1.0 - c.Gate[l]);
       dGateW = c.H[l].t() * dGateZ;
+      if (weight_decay > 0.0) dGateW += weight_decay * p.gate_W[l];
       dGateB = arma::sum(dGateZ, 0).t();
       dH = dMain % c.Gate[l] + dGateZ * p.gate_W[l].t();
     } else {
@@ -704,6 +708,8 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
     mat dW = c.A[l].t() * dZlin;
     vec dB = arma::sum(dZlin, 0).t();
     mat dA_prev = dZlin * p.W[l].t();
+    if (weight_decay > 0.0) dW += weight_decay * p.W[l];
+    if (grad_capture) (*grad_capture)[l] = dW;
 
     mat dResidualW;
     vec dResidualB;
@@ -712,6 +718,7 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
         dA_prev += dA;
       } else {
         dResidualW = c.A[l].t() * dA;
+        if (weight_decay > 0.0) dResidualW += weight_decay * p.residual_W[l];
         dResidualB = arma::sum(dA, 0).t();
         dA_prev += dA * p.residual_W[l].t();
       }
@@ -750,6 +757,7 @@ static void backward_and_update(MLPParams &p, AdamState &s, const ForwardCache &
     // so after the hidden loop dZ is exactly the gradient wrt the projected
     // input Xin = proj_input * proj_W + proj_B.
     mat dProjW = c.proj_input.t() * dZ;
+    if (weight_decay > 0.0) dProjW += weight_decay * p.proj_W;
     vec dProjB = arma::sum(dZ, 0).t();
     adam_step(p.proj_W, s.mProjW, s.vProjW, dProjW, lr, bc1, bc2);
     adam_step(p.proj_B, s.mProjB, s.vProjB, dProjB, lr, bc1, bc2);
@@ -840,7 +848,7 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
                         const arma::mat &offset, Rcpp::List group_codes,
                         Rcpp::IntegerVector group_levels, arma::vec group_penalty,
                         Rcpp::IntegerVector valid_rows,
-                        const arma::vec &case_weights) {
+                        const arma::vec &case_weights, double weight_decay) {
   vec breaks = as<vec>(breaks_in);
   vec ghat_grid = as<vec>(ghat_grid_in);
   bool use_proj = input_projection > 0;
@@ -951,7 +959,8 @@ List densemlp_train_cpp(const arma::mat &X, const arma::mat &Y,
       n_batches++;
       backward_and_update(params, adam, cache, Yb, current_lr, task, residual, gated,
                           dropout_vec, interaction, batch_norm, use_proj,
-                          survival_loss, breaks, ghat_grid, terms_b, group_penalty, wb);
+                          survival_loss, breaks, ghat_grid, terms_b, group_penalty, wb,
+                          weight_decay);
       if (ema_decay > 0.0) update_ema(ema_params, params, ema_decay);
     }
 
@@ -1032,4 +1041,62 @@ arma::mat densemlp_predict_cpp(const arma::mat &X, List weights, List biases,
   }
   return forward_eval(p, X, task, residual, gated, interaction, batch_norm,
                       input_projection > 0, terms);
+}
+
+// Finite-difference check of the analytic weight gradient (testing only).
+// Plain network (no BN, dropout, residual, gate, projection, interaction,
+// offset or groups), full batch, tasks 0, 1, 2 and 4. The objective whose
+// gradient backward_and_update() computes is
+//   J(W) = c * loss(W) + (weight_decay / 2) * sum_l ||W_l||_F^2,
+// with c = 1/2 for the mean squared error (its gradient is (yhat - y)/n)
+// and c = 1 otherwise. Returns the analytic and central-difference
+// gradients of every weight matrix, stacked into two vectors.
+// [[Rcpp::export]]
+List densemlp_gradcheck_cpp(const arma::mat &X, const arma::mat &Y,
+                            Rcpp::IntegerVector hidden_units, int task,
+                            double weight_decay, unsigned int seed, double eps) {
+  std::vector<uword> sizes;
+  sizes.push_back(X.n_cols);
+  for (int i = 0; i < hidden_units.size(); ++i) sizes.push_back((uword)hidden_units[i]);
+  sizes.push_back(Y.n_cols);
+  std::vector<uword> no_levels;
+  MLPParams p = init_params(sizes, seed, false, false, false, 0, no_levels);
+  // Random (non-zero) weights also for the linear model, so the penalty term
+  // contributes to the gradient.
+  arma::arma_rng::set_seed(seed + 7u);
+  for (size_t l = 0; l < p.W.size(); ++l) p.W[l] = arma::randn(size(p.W[l])) * 0.5;
+  vec dropout_vec = arma::zeros(p.gamma.size());
+  OutputTerms terms;
+  vec group_penalty, wb, bn_a, breaks, ghat_grid;
+  double c = task == 0 ? 0.5 : 1.0;
+
+  auto objective = [&](const MLPParams &q) {
+    mat yhat = forward_eval(q, X, task, false, false, false, false, false, terms);
+    double pen = 0.0;
+    for (size_t l = 0; l < q.W.size(); ++l) pen += arma::accu(arma::square(q.W[l]));
+    return c * task_loss(yhat, Y, task) + 0.5 * weight_decay * pen;
+  };
+
+  MLPParams work = p;
+  AdamState adam = init_adam(work);
+  ForwardCache cache;
+  forward_train(work, X, task, false, false, dropout_vec, false, false, false,
+                terms, cache, bn_a);
+  std::vector<mat> grads(p.W.size());
+  backward_and_update(work, adam, cache, Y, 0.0, task, false, false, dropout_vec,
+                      false, false, false, 0, breaks, ghat_grid, terms,
+                      group_penalty, wb, weight_decay, &grads);
+
+  std::vector<double> analytic, numeric;
+  for (size_t l = 0; l < p.W.size(); ++l) {
+    for (uword j = 0; j < p.W[l].n_elem; ++j) {
+      MLPParams up = p, dn = p;
+      up.W[l][j] += eps;
+      dn.W[l][j] -= eps;
+      numeric.push_back((objective(up) - objective(dn)) / (2.0 * eps));
+      analytic.push_back(grads[l][j]);
+    }
+  }
+  return List::create(Named("analytic") = wrap(analytic),
+                      Named("numeric") = wrap(numeric));
 }
