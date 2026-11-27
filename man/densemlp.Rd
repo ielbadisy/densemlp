@@ -139,7 +139,11 @@ epochs.}
 
 \item{ncores}{Number of cores used to fit ensemble members in parallel
 when \code{ensemble > 1} (via \code{parallel::mclapply} on Unix-alikes, serially
-on Windows). Ignored when \code{ensemble = 1}.}
+on Windows). It also caps the threads of a multithreaded BLAS (MKL,
+OpenBLAS) during the fit, through 'RhpcBLASctl', and restores the
+previous setting on exit: on small networks a threaded BLAS can be
+orders of magnitude slower than one thread. Ensemble members run their
+BLAS on one thread.}
 
 \item{formula}{A formula, e.g. \code{y ~ .} or, for survival,
 \code{survival::Surv(time, status) ~ .}, as an alternative to \code{x}/\code{y}. Use

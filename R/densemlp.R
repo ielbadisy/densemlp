@@ -73,7 +73,11 @@
 #' @param verbose Logical; print training/validation loss every 10 epochs.
 #' @param ncores Number of cores used to fit ensemble members in parallel
 #'   when `ensemble > 1` (via `parallel::mclapply` on Unix-alikes, serially
-#'   on Windows). Ignored when `ensemble = 1`.
+#'   on Windows). It also caps the threads of a multithreaded BLAS (MKL,
+#'   OpenBLAS) during the fit, through 'RhpcBLASctl', and restores the
+#'   previous setting on exit: on small networks a threaded BLAS can be
+#'   orders of magnitude slower than one thread. Ensemble members run their
+#'   BLAS on one thread.
 #' @param formula A formula, e.g. `y ~ .` or, for survival,
 #'   `survival::Surv(time, status) ~ .`, as an alternative to `x`/`y`. Use
 #'   either `formula`/`data` or `x`/`y`, not both. A formula may be given as
@@ -220,6 +224,9 @@ densemlp <- function(x = NULL, y = NULL,
                      weights = NULL, weight_decay = 0) {
   task <- match.arg(task)
   loss <- match.arg(loss)
+  nb <- RhpcBLASctl::blas_get_num_procs()
+  RhpcBLASctl::blas_set_num_threads(max(1L, as.integer(ncores)))
+  on.exit(RhpcBLASctl::blas_set_num_threads(nb), add = TRUE)
   lr_schedule <- match.arg(lr_schedule)
 
   # Allow a formula in the first positional slot: `densemlp(y ~ ., data)`.

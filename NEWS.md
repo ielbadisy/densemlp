@@ -1,5 +1,6 @@
 # densemlp 0.9.4
 
+* `densemlp()` now caps the threads of a multithreaded BLAS (MKL, OpenBLAS) at `ncores` during the fit and restores the previous setting on exit. With the default `ncores = 1` a threaded MKL no longer slows small fits by orders of magnitude.
 * `permimportance()` now accepts a numeric matrix as `new_data` (it failed with "subscript out of bounds").
 
 # densemlp 0.9.3
