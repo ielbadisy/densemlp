@@ -97,3 +97,26 @@ test_that("batch_norm and input_projection round-trip through an ensemble", {
   expect_length(pred, nrow(x))
   expect_true(all(is.finite(pred)))
 })
+
+test_that("permimportance accepts a matrix and matches densemlpmetrics at baseline", {
+  set.seed(1)
+  x <- matrix(rnorm(300), 100, dimnames = list(NULL, c("a", "b", "c")))
+  y <- x[, 1] - 0.5 * x[, 2] + rnorm(100, sd = 0.1)
+  fit <- densemlp(x, y, epochs = 30, hidden_units = c(8), verbose = FALSE)
+  imp <- permimportance(fit, x, y)
+  expect_equal(imp$baseline, densemlpmetrics(y, predict(fit, x), task = "regression")$rmse)
+  expect_equal(imp$data$feature[1], "a")
+  xu <- unname(x)
+  fu <- densemlp(xu, y, epochs = 10, hidden_units = c(8), verbose = FALSE)
+  expect_setequal(permimportance(fu, xu, y)$data$feature, c("V1", "V2", "V3"))
+})
+
+test_that("permimportance baseline equals densemlpmetrics for a Brier survival fit", {
+  skip_if_not_installed("survival")
+  set.seed(2)
+  x <- data.frame(a = rnorm(150), b = rnorm(150))
+  y <- survival::Surv(rexp(150, exp(x$a)), rbinom(150, 1, 0.8))
+  fit <- densemlp(x, y, task = "survival", loss = "brier", n_bins = 6, epochs = 20, verbose = FALSE)
+  expect_equal(permimportance(fit, x, y)$baseline,
+               densemlpmetrics(y, predict(fit, x), task = "survival")$concordance)
+})
