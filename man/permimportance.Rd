@@ -13,7 +13,7 @@ permimportance(object, new_data, truth, metric = NULL, seed = object$seed)
 \item{object}{A fitted \code{densemlp} object (single model; ensembles are not
 supported).}
 
-\item{new_data}{Evaluation predictor data.}
+\item{new_data}{Evaluation predictor data (a data frame or a numeric matrix).}
 
 \item{truth}{Ground-truth outcome for \code{new_data}: a numeric vector
 (regression), a factor/character (classification), or a

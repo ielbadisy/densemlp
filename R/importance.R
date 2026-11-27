@@ -7,7 +7,7 @@
 #'
 #' @param object A fitted `densemlp` object (single model; ensembles are not
 #'   supported).
-#' @param new_data Evaluation predictor data.
+#' @param new_data Evaluation predictor data (a data frame or a numeric matrix).
 #' @param truth Ground-truth outcome for `new_data`: a numeric vector
 #'   (regression), a factor/character (classification), or a
 #'   `survival::Surv()` / two-column `(time, event)` object (survival).
@@ -45,6 +45,8 @@ permimportance <- function(object, new_data, truth, metric = NULL,
 
   if (is.null(seed)) seed <- 1L
   set.seed(seed)
+  # `[[feature]]` needs a data frame; an unnamed matrix becomes V1, V2, ... as in the blueprint
+  if (is.matrix(new_data)) new_data <- as.data.frame(new_data)
   features <- object$blueprint$feature_names
   baseline <- score_densemlp_metric(object, new_data, truth, metric, task)
 
